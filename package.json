@@ -67,7 +67,16 @@
           "group": "navigation@4"
         }
       ]
-    }
+    },
+    "grammars": [
+      {
+        "path": "./syntaxes/mk4-annotations.json",
+        "scopeName": "markdown.mk4.injection",
+        "injectTo": [
+          "text.html.markdown"
+        ]
+      }
+    ]
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",

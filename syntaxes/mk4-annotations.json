@@ -1,0 +1,20 @@
+{
+  "scopeName": "markdown.mk4.injection",
+  "injectionSelector": "L:text.html.markdown",
+  "patterns": [
+    {
+      "match": "^(\\s*)(:)([a-zA-Z0-9_-]+)(?:(\\s+)(.*))?$",
+      "captures": {
+        "2": {
+          "name": "punctuation.definition.tag.mk4"
+        },
+        "3": {
+          "name": "entity.name.tag.mk4"
+        },
+        "5": {
+          "name": "string.unquoted.mk4"
+        }
+      }
+    }
+  ]
+}
