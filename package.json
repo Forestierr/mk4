@@ -1,0 +1,98 @@
+{
+  "name": "mk4",
+  "displayName": "mk4",
+  "description": "Markdown but a little bit better !",
+  "version": "0.0.1",
+  "icon": "logo.png",
+  "engines": {
+    "vscode": "^1.125.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "mk4.showPreview",
+        "title": "mk4: Afficher l'aperçu",
+        "category": "Markdown",
+        "icon": "$(open-preview)"
+      },
+      {
+        "command": "mk4.exportPdf",
+        "title": "mk4: Exporter en PDF",
+        "category": "Markdown",
+        "icon": "$(file-pdf)"
+      },
+      {
+        "command": "mk4.exportTypst",
+        "title": "mk4: Exporter le code Typst",
+        "category": "Markdown",
+        "icon": "$(file-code)"
+      },
+      {
+        "command": "mk4.showMarkdownPreview",
+        "title": "mk4: Aperçu Markdown Brut",
+        "category": "Markdown",
+        "icon": "$(markdown)"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "mk4.showPreview",
+          "when": "resourceLangId == markdown",
+          "group": "navigation@1"
+        },
+        {
+          "command": "mk4.exportPdf",
+          "when": "resourceLangId == markdown",
+          "group": "navigation@2"
+        },
+        {
+          "command": "mk4.showMarkdownPreview",
+          "when": "resourceLangId == markdown",
+          "group": "navigation@3"
+        },
+        {
+          "command": "mk4.exportTypst",
+          "when": "resourceLangId == markdown",
+          "group": "navigation@4"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src",
+    "test": "vscode-test"
+  },
+  "devDependencies": {
+    "@types/mdast": "^4.0.4",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "24.x",
+    "@types/vscode": "^1.125.0",
+    "@vscode/test-cli": "^0.0.15",
+    "@vscode/test-electron": "^3.0.0",
+    "eslint": "^10.5.0",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.61.1"
+  },
+  "overrides": {
+    "diff": "^8.0.4",
+    "serialize-javascript": "^7.0.6"
+  },
+  "dependencies": {
+    "remark-gfm": "^1.0.0",
+    "remark-html": "^13.0.2",
+    "remark-math": "^4.0.0",
+    "remark-parse": "^9.0.0",
+    "unified": "^9.2.2",
+    "unist-util-visit": "^2.0.3"
+  }
+}
