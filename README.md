@@ -13,49 +13,94 @@ MK4 est une extension VS Code conçue pour allier la simplicité de frappe du Ma
 
 ## Comment ça marche ? (La magie des Annotations)
 
-Ajoutez des attributs à vos éléments Markdown en utilisant le préfixe `:` juste en dessous de ceux-ci.
+Ajoutez des attributs à vos éléments Markdown en utilisant le préfixe `:` juste en dessous (ou au-dessus pour le document) de ceux-ci. 
+
+Les **Clés Universelles** comme `:id mon_identifiant` et `:align center|left|right` peuvent être appliquées à presque tous les blocs.
+
+Aucune annotations n'est obligatoire pour le fonctionnement du rendu.
+
+## Annotations disponibles
 
 ### Métadonnées du Document & Thèmes
 
 À placer tout en haut de votre fichier `document.md` :
+
 ```markdown
 :theme ./template.typ
 :title Spécifications de l'Architecture
+:subtitle Système embarqué temps réel
 :author Robin Forestier
 :date Juillet 2026
+:lang fr
+:numbering 1.1
 :toc true
+```
+
+### Titres
+
+Contrôlez l'affichage de vos titres dans le document et la table des matières (TOC) :
+
+```markdown
+# Architecture du système de détection
+:short Architecture
+:numbering false
+:id sec_architecture
 ```
 
 ### Images & Figures
 
 ```markdown
-![Schéma du réseau](./network.png)
-:width 80%
+![Logo mk4](/public/logo.png)
+:width 50%
 :align center
-:caption Architecture Docker Swarm et Traefik
-:id fig_network
+:caption Logo MK4
+:id fig_logo
 ```
 
 ### Blocs de Code
 
 ```markdown
-\```rust
+\`\`\`rust
 fn main() {
     println!("Hello Typst!");
 }
-\```
+\`\`\`
+:filename main.rs
+:lines true
+:highlight 2
 :caption Script principal
 :align center
 ```
 
 ### Tableaux
+
 ```markdown
 | Composant | Langage | Description |
 | :--- | :---: | ---: |
 | Serveur | Rust | Pipeline de traitement |
 | Hardware | VHDL | Contrôle bas niveau |
 :caption Matrice des technologies
+:compact true
 :align center
+```
+
+### Citations (Admonitions / Callouts)
+
+Transformez les citations classiques en blocs d'avertissement colorés :
+
+```markdown
+> Il est crucial de vérifier l'alimentation avant le flashage de la carte.
+:type warning
+```
+
+_(Types supportés : note, info, tip, warning, error)_
+
+### Actions Globales
+
+Insérez des commandes de mise en page n'importe où dans le texte :
+
+```markdown
+:layout pagebreak
 ```
 
 ## Commandes & Interface

@@ -90,12 +90,18 @@ function stringifyToTypst(node: any, baseDir: string): string {
             const rootAnn = node.data?.typstAnnotations || {};
             let setup = '';
 
+            setup += `#let in_outline = state("in_outline", false)\n`;
+            setup += `#show outline: it => { in_outline.update(true); it; in_outline.update(false) }\n\n`;
+
             if (rootAnn.theme) {
                 let themePath = rootAnn.theme.replace(/\\/g, '/');
                 setup += `#import "${themePath}": conf\n`;
                 setup += `#show: conf.with(\n`;
                 if (rootAnn.title) {
                     setup += `  title: [${rootAnn.title}],\n`;
+                }
+                if (rootAnn.subtitle) {
+                    setup += `  subtitle: [${rootAnn.subtitle}],\n`;
                 }
                 if (rootAnn.author) {
                     setup += `  author: [${rootAnn.author}],\n`;
@@ -119,6 +125,10 @@ function stringifyToTypst(node: any, baseDir: string): string {
                 if (rootAnn.title) {
                     setup += `#align(center)[#text(22pt, weight: "bold")[${rootAnn.title}]]\n`;
                 }
+                if (rootAnn.subtitle) {
+                    setup += `#v(0.5em)\n`;
+                    setup += `#align(center)[#text(18pt, fill: luma(50))[${rootAnn.subtitle}]]\n`;
+                }
                 if (rootAnn.author) {
                     setup += `#align(center)[#text(12pt)[*${rootAnn.author}*]]\n`;
                 }
@@ -141,12 +151,18 @@ function stringifyToTypst(node: any, baseDir: string): string {
         case 'heading': {
             const title = (node.children || []).map((n: any) => stringifyToTypst(n, baseDir)).join('');
             
-            // On utilise la fonction Typst native pour désactiver la numérotation si demandé
             let headingCode = `#heading(level: ${node.depth}`;
             if (ann.numbering === 'false' || ann.numbering === false) {
                 headingCode += `, numbering: none`;
             }
-            headingCode += `)[${title}]`;
+            
+            // --- NOUVEAU : CHANGEMENT DYNAMIQUE DU TEXTE ---
+            if (ann.short) {
+                // Si Typst dessine l'outline, on donne le short, sinon on donne le long
+                headingCode += `)[#context if in_outline.get() [${ann.short}] else [${title}]]`;
+            } else {
+                headingCode += `)[${title}]`;
+            }
 
             if (ann.id) {
                 headingCode += ` <${ann.id}>`;
@@ -289,60 +305,136 @@ function stringifyToTypst(node: any, baseDir: string): string {
         }
         
         case 'code': {
-            let code = `\`\`\`${node.lang || ''}\n${node.value}\n\`\`\``;
-            
-            // Ajout du cartouche de nom de fichier
-            if (ann.filename) {
-                code = `#rect(fill: luma(250), stroke: luma(200), radius: 4pt, width: 100%, inset: 0pt)[\n  #rect(fill: luma(230), width: 100%, radius: (top: 4pt), inset: 6pt)[*${ann.filename}*]\n  #block(inset: 8pt)[${code}]\n]`;
+            const lang = node.lang ? node.lang.toLowerCase() : '';
+            const hasLines = ann.lines === 'true' || ann.lines === true;
+            const hasHighlight = !!ann.highlight;
+
+            // 1. Le bloc brut avec les sauts de ligne vitaux pour la coloration
+            let codeBlock = `\n\`\`\`${lang}\n${node.value}\n\`\`\`\n`;
+
+            // 2. Numérotation et Surlignage combinés
+            if (hasLines || hasHighlight) {
+                // Parseur intelligent pour la syntaxe des lignes à surligner
+                let hlLinesStr = '()';
+                if (hasHighlight) {
+                    const hl: number[] = [];
+                    const parts = String(ann.highlight).split(',');
+                    for (let p of parts) {
+                        p = p.trim();
+                        const sep = p.includes('-') ? '-' : (p.includes(':') ? ':' : null);
+                        if (sep) {
+                            const [startStr, endStr] = p.split(sep);
+                            const s = startStr === '' ? 1 : parseInt(startStr);
+                            const e = parseInt(endStr);
+                            if (!isNaN(s) && !isNaN(e)) {
+                                for (let k = s; k <= e; k++) hl.push(k);
+                            }
+                        } else {
+                            const n = parseInt(p);
+                            if (!isNaN(n)) hl.push(n);
+                        }
+                    }
+                    // Conversion en tableau Typst (avec une virgule finale si 1 seul élément pour respecter la syntaxe Typst)
+                    hlLinesStr = `(${hl.join(', ')}${hl.length === 1 ? ',' : ''})`;
+                }
+
+                // Configuration de la grille Typst
+                const cols = hasLines ? '(auto, 1fr)' : '(1fr,)';
+                const gutter = hasLines ? '1em' : '0pt';
+
+                // Construction de la fonction de mapping Typst pour dessiner chaque ligne
+                let mapFunc = `((i, line)) => {\n      let ln = i + 1\n      let bg = if ln in hl_lines { rgb(255, 235, 50, 40%) } else { none }\n      let styled_line = block(width: 100%, fill: bg, inset: (x: 4pt, y: 1.5pt), radius: 2pt, line)\n      `;
+                
+                if (hasLines) {
+                    mapFunc += `(align(right, text(fill: luma(150), size: 0.85em, str(ln))), styled_line)\n    }`;
+                } else {
+                    mapFunc += `(styled_line,)\n    }`;
+                }
+
+                codeBlock = `#block([\n  #let hl_lines = ${hlLinesStr}\n  #show raw.where(block: true): it => grid(\n    columns: ${cols},\n    gutter: ${gutter},\n    ..it.lines.enumerate().map(${mapFunc}).flatten()\n  )\n  ${codeBlock}\n])`;
             }
 
+            // 3. Encadré avec le nom du fichier
+            let finalCode = codeBlock;
+            if (ann.filename) {
+                finalCode = `#rect(fill: luma(250), stroke: luma(200), radius: 4pt, width: 100%, inset: 0pt)[\n  #rect(fill: luma(230), width: 100%, radius: (top: 4pt), inset: 6pt)[*${ann.filename}*]\n  #block(inset: 8pt, width: 100%)[\n    ${codeBlock}\n  ]\n]`;
+            }
+
+            // 4. Légende (Figure)
             if (ann.caption) {
-                code = `#figure(\n  [${code}],\n  caption: [${ann.caption}]\n)`;
+                finalCode = `#figure(caption: [${ann.caption}])[${finalCode}]`;
             }
-            if (ann.id) {
-                code += ` <${ann.id}>`;
-            }
+
+            // 5. Alignement global
             if (ann.align) {
-                code = `#align(${ann.align})[\n  ${code}\n]`;
+                finalCode = `#align(${ann.align})[\n  #show figure.caption: set align(${ann.align})\n  ${finalCode}\n]`;
             }
-            result = code;
+
+            // 6. Identifiant Typst
+            if (ann.id) {
+                finalCode += ` <${ann.id}>`;
+            }
+
+            result = finalCode;
             break;
         }
 
         case 'table': {
-            const colsCount = node.children[0]?.children?.length || 0;
-            let tableConfig = `columns: ${colsCount}`;
+            const hasCompact = ann.compact === 'true' || ann.compact === true;
             
-            if (node.align && node.align.some((a: any) => a !== null)) {
-                const typstAligns = node.align.map((a: any) => a ? a : 'left');
-                tableConfig += `, align: (${typstAligns.join(', ')})`;
-            }
+            // 1. Détermination de l'alignement des colonnes (natif Markdown)
+            // remark-gfm fournit un tableau node.align avec 'left', 'center', 'right' ou null
+            const aligns = (node.align || []).map((a: string | null) => {
+                if (a === 'center') return 'center';
+                if (a === 'right') return 'right';
+                return 'left'; // Alignement par défaut
+            });
+            const columnsDef = aligns.length > 0 ? `(${aligns.map(() => 'auto').join(', ')})` : 'auto';
+            const alignDef = aligns.length > 0 ? `(${aligns.join(', ')})` : 'left';
 
-            const rows = (node.children || []).map((row: any, index: number) => {
-                const isHeader = index === 0;
-                return (row.children || []).map((cell: any) => {
-                    let cellText = (cell.children || []).map((n: any) => stringifyToTypst(n, baseDir)).join('');
-                    if (isHeader && cellText.trim() !== '') {
-                        cellText = `*${cellText}*`; 
+            // 2. Construction des cellules Typst
+            const cells: string[] = [];
+            if (node.children) {
+                node.children.forEach((row: any) => {
+                    if (row.children) {
+                        row.children.forEach((cell: any) => {
+                            const cellContent = (cell.children || []).map((n: any) => stringifyToTypst(n, baseDir)).join('');
+                            cells.push(`[${cellContent}]`);
+                        });
                     }
-                    return `[${cellText}]`;
-                }).join(', ');
-            }).join(',\n  ');
+                });
+            }
 
-            let tableCode = `table(\n  ${tableConfig},\n  ${rows}\n)`;
+            // 3. Configuration du tableau
+            let tableArgs = `columns: ${columnsDef}, align: ${alignDef}`;
+            if (hasCompact) {
+                // On réduit drastiquement les marges internes (inset) pour le mode compact
+                tableArgs += `, inset: (x: 0.4em, y: 0.3em)`;
+            }
+
+            let finalTable = `#table(${tableArgs},\n  ${cells.join(',\n  ')}\n)`;
+
+            // 4. Réduction globale du texte si compact
+            if (hasCompact) {
+                finalTable = `#block([\n  #set text(size: 0.9em)\n  ${finalTable}\n])`;
+            }
+
+            // 5. Légende (Figure)
             if (ann.caption) {
-                tableCode = `figure(\n  ${tableCode},\n  caption: [${ann.caption}]\n)`;
+                finalTable = `#figure(caption: [${ann.caption}])[${finalTable}]`;
             }
-            
-            let tResult = `#${tableCode}`;
-            if (ann.id) {
-                tResult += ` <${ann.id}>`;
-            }
+
+            // 6. Alignement global du bloc/figure
             if (ann.align) {
-                tResult = `#align(${ann.align})[\n  ${tResult}\n]`;
+                finalTable = `#align(${ann.align})[\n  #show figure.caption: set align(${ann.align})\n  ${finalTable}\n]`;
             }
-            
-            result = tResult;
+
+            // 7. Identifiant Typst
+            if (ann.id) {
+                finalTable += ` <${ann.id}>`;
+            }
+
+            result = finalTable;
             break;
         }
 

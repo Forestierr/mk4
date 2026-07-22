@@ -48,6 +48,16 @@ export function activate(context: vscode.ExtensionContext) {
         const tempSvgPattern = path.join(baseDir, `.mk4-temp-${sessionId}-{n}.svg`); 
         const tempSvgBase = path.join(baseDir, `.mk4-temp-${sessionId}-`);
 
+        // Récupère la racine de l'espace de travail VS Code actuel
+        // Utiliser pour l'ouverture d'image dans d'autre dossier
+        const workspaceFolders = vscode.workspace.workspaceFolders;
+
+        // Si un dossier est ouvert dans VS Code, on l'utilise comme racine de sécurité Typst.
+        // Sinon, on prend au moins le dossier où se trouve le fichier Markdown.
+        const rootPath = workspaceFolders 
+            ? workspaceFolders[0].uri.fsPath 
+            : baseDir;
+
         const updateWebview = () => {
             const text = editor.document.getText();
             
@@ -56,7 +66,7 @@ export function activate(context: vscode.ExtensionContext) {
                 fs.writeFileSync(tempTypstFile, typstCode, 'utf8');
 
                 // On compile avec le pattern {n}
-                exec(`typst compile "${tempTypstFile}" "${tempSvgPattern}"`, (error, stdout, stderr) => {
+                exec(`typst compile "${tempTypstFile}" "${tempSvgPattern}" --root "${rootPath}"`, (error, stdout, stderr) => {
                     if (error) {
                         panel.webview.html = getErrorHtml("Erreur Typst", stderr || error.message);
                         return;
@@ -306,9 +316,30 @@ export function activate(context: vscode.ExtensionContext) {
                     }
                 };
 
+                // --- DOCUMENT ---
+                if (targetLine === '') {
+                    addItem('title', 'title ', 'Titre principal du document', vscode.CompletionItemKind.Property);
+                    addItem('subtitle', 'subtitle ', 'Sous-titre du document', vscode.CompletionItemKind.Property);
+                    addItem('author', 'author ', 'Auteur du document', vscode.CompletionItemKind.Property);
+                    addItem('date', 'date ', 'Date du document', vscode.CompletionItemKind.Property);
+                    addItem('theme', 'theme ', 'Chemin vers un template Typst externe', vscode.CompletionItemKind.Property);
+                    addItem('lang', 'lang ', 'Langue du document (ex: fr, en)', vscode.CompletionItemKind.Property);
+                    addItem('numbering', 'numbering "1.1"', 'Format de numérotation des titres (ex: 1.1, I.a)', vscode.CompletionItemKind.Property);
+                    
+                    // On utilise le 5ème paramètre pour filtrer la clé de base
+                    addItem('toc true', 'toc true', 'Afficher la table des matières', vscode.CompletionItemKind.Value, 'toc');
+                    addItem('toc false', 'toc false', 'Masquer la table des matières', vscode.CompletionItemKind.Value, 'toc');
+                }
+
                 // --- CLÉS UNIVERSELLES ---
-                addItem('id', 'id ', 'Identifiant Typst (ex: mon_titre)', vscode.CompletionItemKind.Property);
-                addItem('align', 'align ', 'left | center | right', vscode.CompletionItemKind.Enum);
+                if (targetLine !== '') {
+                    addItem('id', 'id ', 'Identifiant Typst (ex: mon_titre)', vscode.CompletionItemKind.Property);
+                    
+                    // On propose les alignements fréquents pour faire gagner du temps
+                    addItem('align center', 'align center', 'Centrer l\'élément', vscode.CompletionItemKind.Value, 'align');
+                    addItem('align left', 'align left', 'Aligner à gauche', vscode.CompletionItemKind.Value, 'align');
+                    addItem('align right', 'align right', 'Aligner à droite', vscode.CompletionItemKind.Value, 'align');
+                }
 
                 // --- CONTEXTE : TITRES (#) ---
                 if (targetLine.startsWith('#')) {
@@ -325,15 +356,23 @@ export function activate(context: vscode.ExtensionContext) {
                 else if (targetLine.startsWith('```')) {
                     addItem('caption', 'caption ', 'Légende du code', vscode.CompletionItemKind.Property);
                     addItem('filename', 'filename ', 'Nom du fichier', vscode.CompletionItemKind.Property);
-                    addItem('lines true', 'lines true', 'Afficher numéros de lignes', vscode.CompletionItemKind.Value, 'lines');
+                    addItem('lines true', 'lines true', 'Afficher les numéros de ligne (Code)', vscode.CompletionItemKind.Value, 'lines');
+                    addItem('lines false', 'lines false', 'Masquer les numéros de ligne', vscode.CompletionItemKind.Value, 'lines');
                     addItem('highlight', 'highlight ', 'Lignes à surligner (ex: 2-4)', vscode.CompletionItemKind.Property);
                 } 
                 // --- CONTEXTE : CITATIONS (>) ---
                 else if (targetLine.startsWith('>')) {
                     // Si on utilise 'type note', on bloque 'type warning' avec la clé commune 'type'
                     addItem('type note', 'type note', 'Bloc Note (bleu)', vscode.CompletionItemKind.Enum, 'type');
+                    addItem('type info', 'type info', 'Bloc Info (bleu claire)', vscode.CompletionItemKind.Enum, 'type');
+                    addItem('type tip', 'type tip', 'Bloc Astuce (vert)', vscode.CompletionItemKind.Enum, 'type');
                     addItem('type warning', 'type warning', 'Bloc Attention (orange)', vscode.CompletionItemKind.Enum, 'type');
                     addItem('type error', 'type error', 'Bloc Erreur (rouge)', vscode.CompletionItemKind.Enum, 'type');
+                }
+                // --- CONTEXTE : TABLE (|)
+                else if (targetLine.startsWith('|')) {
+                    addItem('caption', 'caption ', 'Légende du tableau', vscode.CompletionItemKind.Property);
+                    addItem('compact true', 'compact true', 'Rendre le tableau plus compact (texte plus petit, marges réduites)', vscode.CompletionItemKind.Value, 'compact');
                 }
 
                 // --- ACTIONS GLOBALES ---
