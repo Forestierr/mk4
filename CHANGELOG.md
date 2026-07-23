@@ -5,6 +5,15 @@ Tous les changements notables sur l'extension "mk4" seront documentés dans ce f
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/), 
 et ce projet adhère au [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 1.0.0 (2026-07-23)
+
+
+### Features
+
+* add auto scroling for preview ([0b414d6](https://github.com/Forestierr/mk4/commit/0b414d658c370a1e082ef69a70331960389ebe31))
+* create ci / cd pipeline ([f7c62f0](https://github.com/Forestierr/mk4/commit/f7c62f0a6e19de1d9cb5a44dd77827a39c522f13))
+* create ci / cd pipeline ([a0e17af](https://github.com/Forestierr/mk4/commit/a0e17afce332fc8459d29761dd87413bace30071))
+
 ## [Unreleased]
 
 *Les futurs changements en cours de développement iront ici.*

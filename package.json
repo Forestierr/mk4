@@ -3,7 +3,7 @@
   "displayName": "mk4",
   "description": "Markdown but a little bit better !",
   "publisher": "rob1forest",
-  "version": "0.0.2",
+  "version": "1.0.0",
   "icon": "public/favicon-128x128.ico",
   "engines": {
     "vscode": "^1.125.0"
