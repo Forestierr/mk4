@@ -62,7 +62,7 @@ export function activate(context: vscode.ExtensionContext) {
             const text = editor.document.getText();
             
             try {
-                const typstCode = compileMarkdownToTypst(text, editor.document.uri.fsPath);
+                const typstCode = compileMarkdownToTypst(text, editor.document.uri.fsPath, context);
                 fs.writeFileSync(tempTypstFile, typstCode, 'utf8');
 
                 // On compile avec le pattern {n}
@@ -179,6 +179,19 @@ export function activate(context: vscode.ExtensionContext) {
                 }
             } catch (err) { console.error(err); }
         }, null, context.subscriptions);
+
+        // Écouter les changements dans les paramètres VS Code
+        context.subscriptions.push(
+            vscode.workspace.onDidChangeConfiguration(event => {
+                // Vérifier si le changement concerne notre extension MK4
+                if (event.affectsConfiguration('mk4.typst.defaultTheme') || 
+                    event.affectsConfiguration('mk4.typst.customThemePath')) {
+                    
+                    // Forcer la mise à jour de la Webview immédiatement
+                    updateWebview();
+                }
+            })
+        );
     });
 
 	const exportDisposable = vscode.commands.registerCommand('mk4.exportPdf', () => {
@@ -208,7 +221,7 @@ export function activate(context: vscode.ExtensionContext) {
             return new Promise<void>((resolve) => {
                 try {
                     const text = editor.document.getText();
-                    const typstCode = compileMarkdownToTypst(text, editor.document.uri.fsPath);
+                    const typstCode = compileMarkdownToTypst(text, editor.document.uri.fsPath, context);
                     
                     // On utilise un fichier temporaire unique pour l'export
                     const baseDir = path.dirname(editor.document.uri.fsPath);
@@ -256,7 +269,7 @@ export function activate(context: vscode.ExtensionContext) {
         
         try {
             const text = editor.document.getText();
-            const typstCode = compileMarkdownToTypst(text, mdPath);
+            const typstCode = compileMarkdownToTypst(text, mdPath, context);
             fs.writeFileSync(typPath, typstCode, 'utf8');
             
             vscode.window.showInformationMessage(`Code Typst généré avec succès !`, 'Ouvrir').then(choice => {

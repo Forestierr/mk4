@@ -36,6 +36,8 @@ Aucune annotations n'est obligatoire pour le fonctionnement du rendu.
 :toc true
 ```
 
+_Exemple : [document.md](example/basics/document.md)_
+
 ### Titres
 
 Contrôlez l'affichage de vos titres dans le document et la table des matières (TOC) :
@@ -47,6 +49,8 @@ Contrôlez l'affichage de vos titres dans le document et la table des matières 
 :id sec_architecture
 ```
 
+_Exemple : [titre.md](example/basics/titre.md)_
+
 ### Images & Figures
 
 ```markdown
@@ -56,6 +60,8 @@ Contrôlez l'affichage de vos titres dans le document et la table des matières 
 :caption Logo MK4
 :id fig_logo
 ```
+
+_Exemple : [image.md](example/basics/image.md)_
 
 ### Blocs de Code
 
@@ -72,6 +78,8 @@ fn main() {
 :align center
 ```
 
+_Exemple : [code.md](example/basics/code.md)_
+
 ### Tableaux
 
 ```markdown
@@ -84,6 +92,8 @@ fn main() {
 :align center
 ```
 
+_Exemple : [tableau.md](example/basics/tableau.md)_
+
 ### Citations (Admonitions / Callouts)
 
 Transformez les citations classiques en blocs d'avertissement colorés :
@@ -92,8 +102,9 @@ Transformez les citations classiques en blocs d'avertissement colorés :
 > Il est crucial de vérifier l'alimentation avant le flashage de la carte.
 :type warning
 ```
-
 _(Types supportés : note, info, tip, warning, error)_
+
+_Exemple : [citation.md](example/basics/citation.md)_
 
 ### Actions Globales
 
@@ -102,6 +113,45 @@ Insérez des commandes de mise en page n'importe où dans le texte :
 ```markdown
 :layout pagebreak
 ```
+
+_Exemple : [layout.md](example/basics/layout.md)_
+
+### Theme
+
+Utiliser un thème typst pour modifier le style du document.
+
+```markdown
+:theme ./template.typ
+```
+
+_Exemple : [theme.md](example/theme/theme.md)_
+
+```Typst
+#let conf(
+  title: none,
+  subtitle: none,
+  author: none,
+  date: none,
+  lang: "fr",
+  toc: false,
+  doc,
+) = {
+  // Configuration globale de la page
+  set page(
+    paper: "a4",
+    margin: (x: 2cm, y: 2.5cm),
+    header: align(right)[_ #title _],
+    numbering: "1 / 1"
+  )
+
+  (...)
+
+  // Affiche le reste du document
+  doc
+}
+```
+
+_Exemple : [template.typ](example/theme/template.typ)_
 
 ## Commandes & Interface
 
