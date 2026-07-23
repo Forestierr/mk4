@@ -76,7 +76,23 @@
           "text.html.markdown"
         ]
       }
-    ]
+    ],
+    "configuration": {
+      "title": "MK4 Typst Settings",
+      "properties": {
+        "mk4.typst.defaultTheme": {
+          "type": "string",
+          "default": "default",
+          "enum": ["default", "modern", "academic"],
+          "description": "Le thème Typst par défaut à utiliser pour la compilation."
+        },
+        "mk4.typst.customThemePath": {
+          "type": "string",
+          "default": "",
+          "description": "Chemin absolu vers un fichier .typ personnalisé (écrase le thème par défaut)."
+        }
+      }
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",

@@ -1,3 +1,5 @@
+import * as vscode from 'vscode';
+import * as fs from 'fs';
 import * as path from 'path';
 import remarkParse from 'remark-parse';
 import unified from 'unified';
@@ -87,62 +89,10 @@ function stringifyToTypst(node: any, baseDir: string): string {
 
     switch (node.type) {
         case 'root': {
-            const rootAnn = node.data?.typstAnnotations || {};
             let setup = '';
 
             setup += `#let in_outline = state("in_outline", false)\n`;
             setup += `#show outline: it => { in_outline.update(true); it; in_outline.update(false) }\n\n`;
-
-            if (rootAnn.theme) {
-                let themePath = rootAnn.theme.replace(/\\/g, '/');
-                setup += `#import "${themePath}": conf\n`;
-                setup += `#show: conf.with(\n`;
-                if (rootAnn.title) {
-                    setup += `  title: [${rootAnn.title}],\n`;
-                }
-                if (rootAnn.subtitle) {
-                    setup += `  subtitle: [${rootAnn.subtitle}],\n`;
-                }
-                if (rootAnn.author) {
-                    setup += `  author: [${rootAnn.author}],\n`;
-                }
-                if (rootAnn.date) {
-                    setup += `  date: [${rootAnn.date}],\n`;
-                }
-                if (rootAnn.lang) {
-                    setup += `  lang: "${rootAnn.lang}",\n`;
-                }
-                if (rootAnn.toc) {
-                    setup += `  toc: ${rootAnn.toc},\n`;
-                }
-                setup += `)\n\n`;
-            } else {
-                setup += `#set page(paper: "a4", margin: 2.5cm)\n`;
-                setup += `#set text(lang: "${rootAnn.lang || 'fr'}")\n\n`;
-                if (rootAnn.numbering) {
-                    setup += `#set heading(numbering: "${rootAnn.numbering}")\n`;
-                }
-                if (rootAnn.title) {
-                    setup += `#align(center)[#text(22pt, weight: "bold")[${rootAnn.title}]]\n`;
-                }
-                if (rootAnn.subtitle) {
-                    setup += `#v(0.5em)\n`;
-                    setup += `#align(center)[#text(18pt, fill: luma(50))[${rootAnn.subtitle}]]\n`;
-                }
-                if (rootAnn.author) {
-                    setup += `#align(center)[#text(12pt)[*${rootAnn.author}*]]\n`;
-                }
-                if (rootAnn.date) {
-                    setup += `#align(center)[#text(10pt)[_${rootAnn.date}_]]\n`;
-                }
-                if (rootAnn.title || rootAnn.author || rootAnn.date) {
-                    setup += `#v(2em)\n\n`; 
-                }
-                if (rootAnn.toc) {
-                    setup += `#outline(title: "Table des matières", depth: 3, indent: auto)\n`;
-                    setup += `#pagebreak()\n\n`;
-                }
-            }
 
             result = setup + (node.children || []).map((n: any) => {
                 let childResult = stringifyToTypst(n, baseDir);
@@ -490,7 +440,7 @@ function stringifyToTypst(node: any, baseDir: string): string {
     return result;
 }
 
-export function compileMarkdownToTypst(markdownText: string, documentPath: string): string {
+export function compileMarkdownToTypst(markdownText: string, documentPath: string, extensionContext: vscode.ExtensionContext): string {
     const processor = unified()
         .use(remarkParse)
         .use(remarkGfm)
@@ -501,7 +451,73 @@ export function compileMarkdownToTypst(markdownText: string, documentPath: strin
     const transformedAst = processor.runSync(ast);
     const baseDir = path.dirname(documentPath);
     
-    return stringifyToTypst(transformedAst, baseDir);
+    const bodyTypst = stringifyToTypst(transformedAst, baseDir);
+
+    // Extraction des métadonnées en premier (pour vérifier si :theme est présent)
+    const ann = (transformedAst.data as any)?.typstAnnotations || {};
+
+    // Récupération des paramètres VS Code
+    const config = vscode.workspace.getConfiguration('mk4');
+    const defaultThemeName = config.get<string>('typst.defaultTheme') || 'default';
+    const settingsCustomThemePath = config.get<string>('typst.customThemePath');
+
+    // --- LOGIQUE DE PRIORITÉ ABSOLUE ---
+    let finalThemePath = '';
+
+    if (ann.theme) {
+        // PRIORITÉ 1 : La balise :theme dans le fichier Markdown
+        // On résout le chemin (relatif ou absolu) par rapport à l'emplacement du fichier Markdown
+        finalThemePath = path.resolve(baseDir, ann.theme);
+    } 
+    else if (settingsCustomThemePath && fs.existsSync(settingsCustomThemePath)) {
+        // PRIORITÉ 2 : Le chemin personnalisé dans les paramètres VS Code
+        finalThemePath = settingsCustomThemePath;
+    } 
+    else {
+        // PRIORITÉ 3 : Le thème par défaut fourni avec l'extension
+        finalThemePath = path.join(extensionContext.extensionPath, 'themes', `${defaultThemeName}.typ`);
+    }
+
+    // --- CHARGEMENT DU CODE DU THÈME ---
+    let themeCode = '';
+    try {
+        if (fs.existsSync(finalThemePath)) {
+            themeCode = fs.readFileSync(finalThemePath, 'utf-8');
+        } else {
+            console.error(`Le thème Typst est introuvable au chemin : ${finalThemePath}`);
+            // Fallback de sécurité
+            themeCode = `#let conf(title: none, subtitle: none, author: none, date: none, numbering_style: none, toc: false, doc) = { doc }`;
+        }
+    } catch (e) {
+        console.error("Erreur lors de la lecture du thème Typst :", e);
+        themeCode = `#let conf(title: none, subtitle: none, author: none, date: none, numbering_style: none, toc: false, doc) = { doc }`;
+    }
+
+    // Formatage des autres valeurs pour Typst
+    const title = ann.title ? `"${ann.title}"` : 'none';
+    const subtitle = ann.subtitle ? `"${ann.subtitle}"` : 'none';
+    const author = ann.author ? `"${ann.author}"` : 'none';
+    const date = ann.date ? `"${ann.date}"` : 'none';
+    const numberingStyle = ann.numbering ? `"${ann.numbering}"` : 'none';
+    const toc = ann.toc ? 'true' : 'false';
+
+    // Assemblage final
+    const finalTypst = `${themeCode}
+
+#show: doc => conf(
+  title: ${title},
+  subtitle: ${subtitle},
+  author: ${author},
+  date: ${date},
+  numbering_style: ${numberingStyle},
+  toc: ${toc},
+  doc
+)
+
+${bodyTypst}
+`;
+
+    return finalTypst;
 }
 
 function remarkHtmlAnnotations() {
