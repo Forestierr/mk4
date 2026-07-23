@@ -3,7 +3,7 @@
   "displayName": "mk4",
   "description": "Markdown but a little bit better !",
   "publisher": "rob1forest",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "icon": "public/favicon-128x128.ico",
   "engines": {
     "vscode": "^1.125.0"
@@ -83,7 +83,11 @@
         "mk4.typst.defaultTheme": {
           "type": "string",
           "default": "default",
-          "enum": ["default", "modern", "academic"],
+          "enum": [
+            "default",
+            "modern",
+            "academic"
+          ],
           "description": "Le thème Typst par défaut à utiliser pour la compilation."
         },
         "mk4.typst.customThemePath": {

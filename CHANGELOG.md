@@ -5,6 +5,19 @@ Tous les changements notables sur l'extension "mk4" seront documentés dans ce f
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/), 
 et ce projet adhère au [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0](https://github.com/Forestierr/mk4/compare/v1.0.0...v1.1.0) (2026-07-23)
+
+
+### Features
+
+* ajout de thème & paramètres ([18f3f85](https://github.com/Forestierr/mk4/commit/18f3f85c4bbf59a95223c164b8d6149e77b63ae9))
+* ajout de theme et parametres ([b24c789](https://github.com/Forestierr/mk4/commit/b24c7896b0c2c73e38cf21a18bc684d67289f18c))
+
+
+### Bug Fixes
+
+* compileMarkdownToTypst missing parameter ([a33f82d](https://github.com/Forestierr/mk4/commit/a33f82d5e22943f2609926b9c8e6c9af0c7df94e))
+
 ## 1.0.0 (2026-07-23)
 
 
