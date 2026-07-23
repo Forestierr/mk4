@@ -9,6 +9,14 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 *Les futurs changements en cours de développement iront ici.*
 
+## [0.0.3] - 22-07-2026
+
+### Added (Ajouts)
+
+- **Auto scroll** : Scroll automatique entre la page de preview et markdown (dans les deux sens).
+- **Colorations** : Ajout de coloration des annotaion dans le fichier markdown.
+- **CI** : Ajout d'un ci permetant de valider un PR et de push une nouvelle version de l'extention automatiquement.
+
 ## [0.0.2] - 22-07-2026
 
 ### Added (Ajouts)

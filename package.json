@@ -84,7 +84,9 @@
     "watch": "tsc -watch -p ./",
     "pretest": "npm run compile && npm run lint",
     "lint": "eslint src",
-    "test": "vscode-test"
+    "test": "vscode-test",
+    "package": "vsce package",
+    "publish-extension": "vsce publish"
   },
   "devDependencies": {
     "@types/mdast": "^4.0.4",

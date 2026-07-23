@@ -88,8 +88,15 @@ export function activate(context: vscode.ExtensionContext) {
                                 break;
                             }
                         }
-
-                        panel.webview.html = getSvgHtml(allPagesHtml);
+                        // Query pour les positions physiques de tous les blocs
+                        const evalExpr = `query(<mk4_loc>).map(el => (value: el.value, pos: el.location().position()))`;
+                        exec(`typst eval "${evalExpr}" --in "${tempTypstFile}" --root "${rootPath}"`, (qErr, qStdout, qStderr) => {
+                            let mapJson = "[]";
+                            if (!qErr && qStdout) {
+                                mapJson = qStdout.trim();
+                            }
+                            panel.webview.html = getSvgHtml(allPagesHtml, mapJson);
+                        });
                         
                     } catch (readErr: any) {
                         panel.webview.html = getErrorHtml("Erreur SVG", readErr.message);
@@ -103,6 +110,51 @@ export function activate(context: vscode.ExtensionContext) {
 
         updateWebview();
 
+        // --- Garde anti-boucle ---
+        let isScrollingFromWebview = false;
+        let webviewScrollTimeout: ReturnType<typeof setTimeout> | null = null;
+
+        // --- Preview → Éditeur ---
+        panel.webview.onDidReceiveMessage(message => {
+            if (message.command === 'revealLine') {
+                isScrollingFromWebview = true;
+                if (webviewScrollTimeout) {
+                    clearTimeout(webviewScrollTimeout);
+                }
+                webviewScrollTimeout = setTimeout(() => { isScrollingFromWebview = false; }, 150);
+
+                const line = Math.max(0, Math.min(message.line - 1, editor.document.lineCount - 1));
+                const range = new vscode.Range(line, 0, line, 0);
+                editor.revealRange(range, vscode.TextEditorRevealType.AtTop);
+            }
+        });
+
+        // --- Éditeur → Preview ---
+        let scrollPending = false;
+        const scrollSub = vscode.window.onDidChangeTextEditorVisibleRanges(e => {
+            if (e.textEditor === editor) {
+                if (isScrollingFromWebview) {
+                    return;
+                }
+                if (scrollPending) {
+                    return;
+                }
+                scrollPending = true;
+
+                setImmediate(() => {
+                    scrollPending = false;
+                    const visibleRanges = e.visibleRanges;
+                    if (visibleRanges.length > 0) {
+                        const topVisibleLine = visibleRanges[0].start.line;
+                        panel.webview.postMessage({
+                            command: 'syncScroll',
+                            line: topVisibleLine + 1
+                        });
+                    }
+                });
+            }
+        });
+
         const changeSub = vscode.workspace.onDidChangeTextDocument(e => {
             if (e.document === editor.document) {
                 updateWebview();
@@ -111,6 +163,7 @@ export function activate(context: vscode.ExtensionContext) {
 
         panel.onDidDispose(() => {
             changeSub.dispose();
+            scrollSub.dispose();
 
 			activeSessions = activeSessions.filter(s => s.id !== sessionId);
 
@@ -389,7 +442,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 // -- Fonctions d'interface HTML --
 
-function getSvgHtml(svgContent: string) {
+function getSvgHtml(svgContent: string, mapJson: string = "[]") {
     return `<!DOCTYPE html>
     <html lang="fr">
     <head>
@@ -418,6 +471,145 @@ function getSvgHtml(svgContent: string) {
     </head>
     <body>
         ${svgContent}
+        <script>
+            const vscode = acquireVsCodeApi();
+            let currentMap = [];
+            let absYCache = [];  // cache des positions absolues en px
+            let isScrollingFromEditor = false;
+            let editorScrollTimer = null;
+
+            try {
+                const rawMap = ${mapJson};
+                currentMap = rawMap.map(item => ({
+                    line: parseInt(item.value),
+                    page: item.pos.page,
+                    y: parseFloat(String(item.pos.y).replace('pt', ''))
+                })).sort((a, b) => a.line - b.line);
+            } catch (e) {
+                console.error('Map parsing error', e);
+            }
+
+            // Convertit une ancre {page, y(pt)} en position absolue en pixels dans le scroll
+            function getAbsoluteY(anchor) {
+                const pages = document.querySelectorAll('.page');
+                const pageDiv = pages[anchor.page - 1];
+                if (!pageDiv) return 0;
+
+                const svg = pageDiv.querySelector('svg');
+                if (!svg) return 0;
+
+                const svgNativeHeight = parseFloat(svg.getAttribute('height')) || 1;
+                const svgDomHeight = svg.getBoundingClientRect().height;
+                const ratio = svgDomHeight / svgNativeHeight;
+
+                return pageDiv.offsetTop + (anchor.y * ratio);
+            }
+
+            // Reconstruit le cache des Y absolus (après chargement ou resize)
+            function rebuildAbsYCache() {
+                absYCache = currentMap.map(a => getAbsoluteY(a));
+            }
+            window.addEventListener('load', rebuildAbsYCache);
+            window.addEventListener('resize', rebuildAbsYCache);
+
+            // ========== Éditeur → Preview ==========
+            window.addEventListener('message', event => {
+                const message = event.data;
+                if (message.command === 'syncScroll') {
+                    if (currentMap.length === 0) return;
+
+                    // Poser le verrou
+                    isScrollingFromEditor = true;
+                    if (editorScrollTimer) clearTimeout(editorScrollTimer);
+                    editorScrollTimer = setTimeout(() => { isScrollingFromEditor = false; }, 300);
+
+                    const targetLine = message.line;
+
+                    // Trouver les deux ancres encadrant la ligne courante
+                    let prevIdx = -1;
+                    for (let i = 0; i < currentMap.length; i++) {
+                        if (currentMap[i].line <= targetLine) {
+                            prevIdx = i;
+                        } else {
+                            break;
+                        }
+                    }
+
+                    const prev = prevIdx >= 0 ? currentMap[prevIdx] : null;
+                    const next = (prevIdx + 1 < currentMap.length) ? currentMap[prevIdx + 1] : null;
+                    const prevAbsY = prev ? absYCache[prevIdx] : null;
+                    const nextAbsY = next ? absYCache[prevIdx + 1] : null;
+
+                    let targetY;
+
+                    if (prev && next && next.line > prev.line) {
+                        const ratio = (targetLine - prev.line) / (next.line - prev.line);
+                        targetY = prevAbsY + ratio * (nextAbsY - prevAbsY);
+                    } else if (prev) {
+                        targetY = prevAbsY;
+                    } else if (next) {
+                        targetY = nextAbsY;
+                    } else {
+                        return;
+                    }
+
+                    const topOffset = window.innerHeight * 0.33;
+                    window.scrollTo({
+                        top: Math.max(0, targetY - topOffset),
+                        behavior: 'smooth'
+                    });
+                }
+            });
+
+            // ========== Preview → Éditeur ==========
+            let scrollScheduled = false;
+            window.addEventListener('scroll', () => {
+                if (isScrollingFromEditor || currentMap.length === 0) return;
+                if (scrollScheduled) return;
+                scrollScheduled = true;
+
+                requestAnimationFrame(() => {
+                    scrollScheduled = false;
+                    if (absYCache.length === 0) rebuildAbsYCache();
+
+                    const topOffset = window.innerHeight * 0.33;
+                    const currentY = window.scrollY + topOffset;
+
+                    // Trouver les deux ancres encadrant cette position Y
+                    let prevIdx = -1;
+                    for (let i = 0; i < absYCache.length; i++) {
+                        if (absYCache[i] <= currentY) {
+                            prevIdx = i;
+                        } else {
+                            break;
+                        }
+                    }
+
+                    const prev = prevIdx >= 0 ? currentMap[prevIdx] : null;
+                    const next = (prevIdx + 1 < currentMap.length) ? currentMap[prevIdx + 1] : null;
+                    const prevAbsY = prevIdx >= 0 ? absYCache[prevIdx] : null;
+                    const nextAbsY = (prevIdx + 1 < absYCache.length) ? absYCache[prevIdx + 1] : null;
+
+                    let targetLine;
+
+                    if (prev && next && nextAbsY > prevAbsY) {
+                        const ratio = (currentY - prevAbsY) / (nextAbsY - prevAbsY);
+                        targetLine = prev.line + ratio * (next.line - prev.line);
+                    } else if (prev) {
+                        targetLine = prev.line;
+                    } else if (next) {
+                        targetLine = next.line;
+                    } else {
+                        return;
+                    }
+
+                    vscode.postMessage({
+                        command: 'revealLine',
+                        line: Math.round(targetLine)
+                    });
+                });
+            });
+        </script>
     </body>
     </html>`;
 }

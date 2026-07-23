@@ -144,7 +144,14 @@ function stringifyToTypst(node: any, baseDir: string): string {
                 }
             }
 
-            result = setup + (node.children || []).map((n: any) => stringifyToTypst(n, baseDir)).join('\n\n');
+            result = setup + (node.children || []).map((n: any) => {
+                let childResult = stringifyToTypst(n, baseDir);
+                // Injecter un marqueur de position pour chaque bloc de premier niveau
+                if (n.position && n.position.start) {
+                    childResult = `#metadata("${n.position.start.line}") <mk4_loc>\n` + childResult;
+                }
+                return childResult;
+            }).join('\n\n');
             break;
         }
             
@@ -171,6 +178,8 @@ function stringifyToTypst(node: any, baseDir: string): string {
                 headingCode = `#align(${ann.align})[${headingCode}]`;
             }
             
+
+
             result = headingCode;
             break;
         }
@@ -327,11 +336,15 @@ function stringifyToTypst(node: any, baseDir: string): string {
                             const s = startStr === '' ? 1 : parseInt(startStr);
                             const e = parseInt(endStr);
                             if (!isNaN(s) && !isNaN(e)) {
-                                for (let k = s; k <= e; k++) hl.push(k);
+                                for (let k = s; k <= e; k++) {
+                                    hl.push(k);
+                                }
                             }
                         } else {
                             const n = parseInt(p);
-                            if (!isNaN(n)) hl.push(n);
+                            if (!isNaN(n)) {
+                                hl.push(n);
+                            }
                         }
                     }
                     // Conversion en tableau Typst (avec une virgule finale si 1 seul élément pour respecter la syntaxe Typst)
@@ -385,8 +398,12 @@ function stringifyToTypst(node: any, baseDir: string): string {
             // 1. Détermination de l'alignement des colonnes (natif Markdown)
             // remark-gfm fournit un tableau node.align avec 'left', 'center', 'right' ou null
             const aligns = (node.align || []).map((a: string | null) => {
-                if (a === 'center') return 'center';
-                if (a === 'right') return 'right';
+                if (a === 'center') {
+                    return 'center';
+                }
+                if (a === 'right') {
+                    return 'right';
+                }
                 return 'left'; // Alignement par défaut
             });
             const columnsDef = aligns.length > 0 ? `(${aligns.map(() => 'auto').join(', ')})` : 'auto';
