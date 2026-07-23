@@ -1,9 +1,10 @@
 name: MK4 - Publish Extension
 
 on:
-  release:
-    types:
-      - published
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
 
 permissions:
   contents: read

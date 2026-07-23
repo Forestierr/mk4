@@ -5,6 +5,9 @@ on:
     branches: [ main, master ]
     types: [ opened, synchronize, reopened, ready_for_review ]
 
+permissions:
+  contents: read
+
 jobs:
   build-and-test:
     if: github.event.pull_request.draft == false
@@ -12,14 +15,25 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Validate PR commits with commitlint
+        if: github.event_name == 'pull_request'
+        run: |
+          npx commitlint \
+            --from ${{ github.event.pull_request.base.sha }} \
+            --to ${{ github.event.pull_request.head.sha }} \
+            --verbose
 
       - name: Run linter
         run: npm run lint
