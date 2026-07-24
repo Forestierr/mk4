@@ -1,5 +1,4 @@
 import * as vscode from 'vscode';
-import * as os from 'os';
 import * as path from 'path';
 import * as fs from 'fs';
 import { exec } from 'child_process';
@@ -71,6 +70,7 @@ export function activate(context: vscode.ExtensionContext) {
 
         const updateWebview = () => {
             const text = editor.document.getText();
+            const annotationWarnings = validateAnnotations(text, editor.document);
             
             try {
                 const typstCode = compileMarkdownToTypst(text, editor.document.uri.fsPath, context);
@@ -108,12 +108,12 @@ export function activate(context: vscode.ExtensionContext) {
                             diag.source = 'MK4';
                             return diag;
                         });
-                        diagnosticCollection.set(editor.document.uri, diagnostics);
+                        diagnosticCollection.set(editor.document.uri, [...diagnostics, ...annotationWarnings]);
                         
                         return;
                     } else {
                         panel.webview.postMessage({ type: 'clearError' });
-                        diagnosticCollection.delete(editor.document.uri);
+                        diagnosticCollection.set(editor.document.uri, annotationWarnings);
                     }
 
                     try {
@@ -155,7 +155,7 @@ export function activate(context: vscode.ExtensionContext) {
                     vscode.DiagnosticSeverity.Error
                 );
                 diag.source = 'MK4';
-                diagnosticCollection.set(editor.document.uri, [diag]);
+                diagnosticCollection.set(editor.document.uri, [diag, ...annotationWarnings]);
             }
         };
 
@@ -206,9 +206,12 @@ export function activate(context: vscode.ExtensionContext) {
             }
         });
 
+        let updateTimeout: ReturnType<typeof setTimeout> | null = null;
+
         const changeSub = vscode.workspace.onDidChangeTextDocument(e => {
             if (e.document === editor.document) {
-                updateWebview();
+                if (updateTimeout) { clearTimeout(updateTimeout); }
+                updateTimeout = setTimeout(() => updateWebview(), 300);
             }
         });
 
@@ -503,6 +506,76 @@ export function activate(context: vscode.ExtensionContext) {
     );
 
     context.subscriptions.push(previewDisposable, exportDisposable, exportTypstDisposable, markdownPreviewDisposable, completionProvider, diagnosticCollection);
+}
+
+// -- Validation des annotations Markdown --
+
+const DOCUMENT_KEYS = new Set(['title', 'subtitle', 'author', 'date', 'theme', 'lang', 'numbering', 'toc']);
+const UNIVERSAL_KEYS = new Set(['id', 'align', 'layout']);
+const CONTEXT_KEYS: Record<string, Set<string>> = {
+    heading:    new Set(['short', 'numbering']),
+    image:      new Set(['caption', 'width']),
+    code:       new Set(['caption', 'filename', 'lines', 'highlight']),
+    blockquote: new Set(['type', 'author', 'link', 'source']),
+    table:      new Set(['caption', 'compact']),
+};
+
+function detectContext(contextLine: string): string {
+    if (contextLine === '') { return 'document'; }
+    if (contextLine.startsWith('#')) { return 'heading'; }
+    if (contextLine.startsWith('![')) { return 'image'; }
+    if (contextLine.startsWith('```')) { return 'code'; }
+    if (contextLine.startsWith('>')) { return 'blockquote'; }
+    if (contextLine.startsWith('|')) { return 'table'; }
+    return 'paragraph';
+}
+
+function validateAnnotations(text: string, document: vscode.TextDocument): vscode.Diagnostic[] {
+    const lines = text.split(/\r?\n/);
+    const diagnostics: vscode.Diagnostic[] = [];
+
+    for (let i = 0; i < lines.length; i++) {
+        const trimmed = lines[i].trim();
+        if (!trimmed.startsWith(':')) { continue; }
+
+        const keyMatch = trimmed.match(/^:([a-zA-Z0-9_-]+)/);
+        if (!keyMatch) { continue; }
+        const key = keyMatch[1];
+
+        // Remonter pour trouver l'élément parent (première ligne non-annotation, non-vide)
+        let contextLine = '';
+        let j = i - 1;
+        while (j >= 0) {
+            const prev = lines[j].trim();
+            if (prev === '' || prev.startsWith(':')) { j--; continue; }
+            contextLine = prev;
+            break;
+        }
+
+        const ctx = detectContext(contextLine);
+
+        // Construire l'ensemble des clés valides pour ce contexte
+        const validKeys = new Set(UNIVERSAL_KEYS);
+        if (ctx === 'document') {
+            DOCUMENT_KEYS.forEach(k => validKeys.add(k));
+        } else if (CONTEXT_KEYS[ctx]) {
+            CONTEXT_KEYS[ctx].forEach(k => validKeys.add(k));
+        }
+
+        if (!validKeys.has(key)) {
+            const colonIdx = lines[i].indexOf(':');
+            const range = new vscode.Range(i, colonIdx, i, colonIdx + 1 + key.length);
+            const diag = new vscode.Diagnostic(
+                range,
+                `Annotation inconnue ":${key}" dans ce contexte`,
+                vscode.DiagnosticSeverity.Warning
+            );
+            diag.source = 'MK4';
+            diagnostics.push(diag);
+        }
+    }
+
+    return diagnostics;
 }
 
 // -- Fonctions d'analyse des erreurs Typst --

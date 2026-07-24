@@ -13,7 +13,9 @@
     "url": "https://github.com/Forestierr/mk4"
   },
   "categories": [
-    "Other"
+    "Programming Languages",
+    "Formatters",
+    "Visualization"
   ],
   "activationEvents": [],
   "main": "./out/extension.js",

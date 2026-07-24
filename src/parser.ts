@@ -172,6 +172,29 @@ function stringifyToTypst(node: any, baseDir: string): string {
             break;
         }
 
+        case 'strong': {
+            const inner = (node.children || []).map((n: any) => stringifyToTypst(n, baseDir)).join('');
+            result = `*${inner}*`;
+            break;
+        }
+
+        case 'emphasis': {
+            const inner = (node.children || []).map((n: any) => stringifyToTypst(n, baseDir)).join('');
+            result = `_${inner}_`;
+            break;
+        }
+
+        case 'delete': {
+            const inner = (node.children || []).map((n: any) => stringifyToTypst(n, baseDir)).join('');
+            result = `#strike[${inner}]`;
+            break;
+        }
+
+        case 'inlineCode': {
+            result = `\`${node.value}\``;
+            break;
+        }
+
         case 'image': {
             result = `#image("${node.url}")`;
             break;
