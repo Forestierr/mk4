@@ -9,7 +9,16 @@ let activeSessions: { dir: string, id: string }[] = [];
 
 export function activate(context: vscode.ExtensionContext) {
 	// nettoyage des fichiers fantôme
-	vscode.workspace.findFiles('**/.mk4-temp-*').then(files => {
+	vscode.workspace.findFiles('**/.mk4-{temp,export}-*').then(files => {
+        for (const file of files) {
+            try {
+                fs.unlinkSync(file.fsPath);
+            } catch (e) {
+                // On ignore silencieusement si le fichier est verrouillé
+            }
+        }
+    });
+	vscode.workspace.findFiles('**/.mk4-export.typ').then(files => {
         for (const file of files) {
             try {
                 fs.unlinkSync(file.fsPath);
@@ -800,9 +809,11 @@ function escapeHtml(unsafe: string) {
 }
 
 export function deactivate() {
+    const cleanedDirs = new Set<string>();
     for (const session of activeSessions) {
         try {
             if (fs.existsSync(session.dir)) {
+                cleanedDirs.add(session.dir);
                 const files = fs.readdirSync(session.dir);
                 for (const file of files) {
                     if (file.startsWith(`.mk4-temp-${session.id}`)) {
@@ -815,6 +826,18 @@ export function deactivate() {
             }
         } catch (err) {
             console.error("Erreur de nettoyage final:", err);
+        }
+    }
+
+    // Nettoyage des fichiers d'export orphelins
+    for (const dir of cleanedDirs) {
+        try {
+            const exportFile = path.join(dir, '.mk4-export.typ');
+            if (fs.existsSync(exportFile)) {
+                fs.unlinkSync(exportFile);
+            }
+        } catch (err) {
+            // On ignore silencieusement
         }
     }
 }
