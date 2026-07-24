@@ -19,6 +19,8 @@ export function activate(context: vscode.ExtensionContext) {
         }
     });
 
+    const diagnosticCollection = vscode.languages.createDiagnosticCollection('mk4');
+
     const previewDisposable = vscode.commands.registerCommand('mk4.showPreview', () => {
         const editor = vscode.window.activeTextEditor;
         
@@ -68,8 +70,31 @@ export function activate(context: vscode.ExtensionContext) {
                 // On compile avec le pattern {n}
                 exec(`typst compile "${tempTypstFile}" "${tempSvgPattern}" --root "${rootPath}"`, (error, stdout, stderr) => {
                     if (error) {
-                        panel.webview.html = getErrorHtml("Erreur Typst", stderr || error.message);
+                        const shortError = error.message.split('\n')[0] || "Erreur de compilation";
+    
+                        // On envoie un message à la Webview pour afficher le bandeau
+                        panel.webview.postMessage({ 
+                            type: 'showError', 
+                            text: shortError 
+                        });
+
+                        // Soulignement rouge des erreurs dans l'éditeur
+                        const errorSource = stderr || error.message;
+                        const errors = parseTypstErrors(errorSource, typstCode);
+                        const diagnostics: vscode.Diagnostic[] = errors.map(err => {
+                            const lineIdx = Math.max(0, Math.min(err.line - 1, editor.document.lineCount - 1));
+                            const lineText = editor.document.lineAt(lineIdx).text;
+                            const range = new vscode.Range(lineIdx, 0, lineIdx, lineText.length);
+                            const diag = new vscode.Diagnostic(range, err.message, vscode.DiagnosticSeverity.Error);
+                            diag.source = 'MK4';
+                            return diag;
+                        });
+                        diagnosticCollection.set(editor.document.uri, diagnostics);
+                        
                         return;
+                    } else {
+                        panel.webview.postMessage({ type: 'clearError' });
+                        diagnosticCollection.delete(editor.document.uri);
                     }
 
                     try {
@@ -105,6 +130,13 @@ export function activate(context: vscode.ExtensionContext) {
 
             } catch (err: any) {
                 panel.webview.html = getErrorHtml("Erreur de Parsing", err.message);
+                const diag = new vscode.Diagnostic(
+                    new vscode.Range(0, 0, 0, 0),
+                    err.message,
+                    vscode.DiagnosticSeverity.Error
+                );
+                diag.source = 'MK4';
+                diagnosticCollection.set(editor.document.uri, [diag]);
             }
         };
 
@@ -164,6 +196,7 @@ export function activate(context: vscode.ExtensionContext) {
         panel.onDidDispose(() => {
             changeSub.dispose();
             scrollSub.dispose();
+            diagnosticCollection.delete(editor.document.uri);
 
 			activeSessions = activeSessions.filter(s => s.id !== sessionId);
 
@@ -450,7 +483,51 @@ export function activate(context: vscode.ExtensionContext) {
         ':'
     );
 
-    context.subscriptions.push(previewDisposable, exportDisposable, exportTypstDisposable, markdownPreviewDisposable, completionProvider);
+    context.subscriptions.push(previewDisposable, exportDisposable, exportTypstDisposable, markdownPreviewDisposable, completionProvider, diagnosticCollection);
+}
+
+// -- Fonctions d'analyse des erreurs Typst --
+
+function buildTypstToMdLineMap(typstCode: string): number[] {
+    const lines = typstCode.split(/\r?\n/);
+    const map: number[] = [];
+    let currentMdLine = 1;
+    
+    for (let i = 0; i < lines.length; i++) {
+        const match = lines[i].match(/#metadata\("(\d+)"\)\s*<mk4_loc>/);
+        if (match) {
+            currentMdLine = parseInt(match[1]);
+        }
+        map[i] = currentMdLine;
+    }
+    
+    return map;
+}
+
+function parseTypstErrors(stderr: string, typstCode: string): { line: number, message: string }[] {
+    const lineMap = buildTypstToMdLineMap(typstCode);
+    const results: { line: number, message: string }[] = [];
+    
+    const stderrLines = stderr.split(/\r?\n/);
+    let currentMessage = 'Erreur de compilation Typst';
+    
+    for (const stderrLine of stderrLines) {
+        // Capture le message d'erreur (ex: "error: unknown variable: xyz")
+        const errMatch = stderrLine.match(/^error:\s*(.+)/);
+        if (errMatch) {
+            currentMessage = errMatch[1].trim();
+        }
+        
+        // Capture la référence fichier:ligne:colonne (ex: ".mk4-temp-abc.typ:15:3")
+        const refMatch = stderrLine.match(/\.typ:(\d+):(\d+)/);
+        if (refMatch) {
+            const typLine = parseInt(refMatch[1]) - 1; // index 0-based
+            const mdLine = (typLine >= 0 && typLine < lineMap.length) ? lineMap[typLine] : 1;
+            results.push({ line: mdLine, message: currentMessage });
+        }
+    }
+    
+    return results;
 }
 
 // -- Fonctions d'interface HTML --
@@ -483,8 +560,30 @@ function getSvgHtml(svgContent: string, mapJson: string = "[]") {
         </style>
     </head>
     <body>
+        <div id="error-banner" style="display: none; position: fixed; top: 10px; right: 10px; background: #e74c3c; color: white; padding: 10px 15px; border-radius: 5px; z-index: 1000; box-shadow: 0 4px 6px rgba(0,0,0,0.3); font-family: sans-serif; max-width: 300px; font-size: 12px;">
+            <strong>Erreur Typst</strong><br>
+            <span id="error-text"></span>
+        </div>
+
         ${svgContent}
+        
         <script>
+            // Erreur typst
+            const errorBanner = document.getElementById('error-banner');
+            const errorText = document.getElementById('error-text');
+
+            // Écouter les messages venant de l'extension
+            window.addEventListener('message', event => {
+                const message = event.data;
+                if (message.type === 'showError') {
+                    errorText.textContent = message.text;
+                    errorBanner.style.display = 'block';
+                } else if (message.type === 'clearError') {
+                    errorBanner.style.display = 'none';
+                }
+            });
+
+            // scroll automatique
             const vscode = acquireVsCodeApi();
             let currentMap = [];
             let absYCache = [];  // cache des positions absolues en px
