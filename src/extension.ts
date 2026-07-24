@@ -67,6 +67,16 @@ export function activate(context: vscode.ExtensionContext) {
                 const typstCode = compileMarkdownToTypst(text, editor.document.uri.fsPath, context);
                 fs.writeFileSync(tempTypstFile, typstCode, 'utf8');
 
+                // Nettoyage des SVG de la compilation précédente (évite les pages fantômes)
+                try {
+                    const existingFiles = fs.readdirSync(baseDir);
+                    for (const file of existingFiles) {
+                        if (file.startsWith(`.mk4-temp-${sessionId}-`) && file.endsWith('.svg')) {
+                            fs.unlinkSync(path.join(baseDir, file));
+                        }
+                    }
+                } catch (e) { /* ignore */ }
+
                 // On compile avec le pattern {n}
                 exec(`typst compile "${tempTypstFile}" "${tempSvgPattern}" --root "${rootPath}"`, (error, stdout, stderr) => {
                     if (error) {
