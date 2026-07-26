@@ -7,6 +7,7 @@ import visit from 'unist-util-visit';
 
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
+import remarkFootnotes from 'remark-footnotes';
 import remarkHtml from 'remark-html';
 
 function remarkTypstAnnotations() {
@@ -83,7 +84,7 @@ function remarkTypstAnnotations() {
     };
 }
 
-function stringifyToTypst(node: any, baseDir: string): string {
+function stringifyToTypst(node: any, baseDir: string, footnotes?: Map<string, string>): string {
     const ann = node.data?.typstAnnotations || {};
     let result = '';
 
@@ -94,19 +95,31 @@ function stringifyToTypst(node: any, baseDir: string): string {
             setup += `#let in_outline = state("in_outline", false)\n`;
             setup += `#show outline: it => { in_outline.update(true); it; in_outline.update(false) }\n\n`;
 
-            result = setup + (node.children || []).map((n: any) => {
-                let childResult = stringifyToTypst(n, baseDir);
-                // Injecter un marqueur de position pour chaque bloc de premier niveau
-                if (n.position && n.position.start) {
-                    childResult = `#metadata("${n.position.start.line}") <mk4_loc>\n` + childResult;
+            // Collecter les définitions de notes de bas de page
+            const footnoteMap = new Map<string, string>();
+            for (const child of (node.children || [])) {
+                if (child.type === 'footnoteDefinition') {
+                    const fnContent = (child.children || [])
+                        .map((n: any) => stringifyToTypst(n, baseDir, footnoteMap)).join('');
+                    footnoteMap.set(child.identifier, fnContent);
                 }
-                return childResult;
-            }).join('\n\n');
+            }
+
+            result = setup + (node.children || [])
+                .filter((n: any) => n.type !== 'footnoteDefinition')
+                .map((n: any) => {
+                    let childResult = stringifyToTypst(n, baseDir, footnoteMap);
+                    // Injecter un marqueur de position pour chaque bloc de premier niveau
+                    if (n.position && n.position.start) {
+                        childResult = `#metadata("${n.position.start.line}") <mk4_loc>\n` + childResult;
+                    }
+                    return childResult;
+                }).join('\n\n');
             break;
         }
             
         case 'heading': {
-            const title = (node.children || []).map((n: any) => stringifyToTypst(n, baseDir)).join('');
+            const title = (node.children || []).map((n: any) => stringifyToTypst(n, baseDir, footnotes)).join('');
             
             let headingCode = `#heading(level: ${node.depth}`;
             if (ann.numbering === 'false' || ann.numbering === false) {
@@ -136,8 +149,8 @@ function stringifyToTypst(node: any, baseDir: string): string {
         
         case 'paragraph': {
             if (node.children?.length === 1 && node.children[0].type === 'image') {
-                const img = node.children[0];
-                let imgCode = `image("${img.url}"`;
+                const imgNode = node.children[0];
+                let imgCode = `image("${imgNode.url}"`;
                 if (ann.width) {
                     imgCode += `, width: ${ann.width}`;
                 }
@@ -159,7 +172,7 @@ function stringifyToTypst(node: any, baseDir: string): string {
                 break;
             }
 
-            let text = (node.children || []).map((n: any) => stringifyToTypst(n, baseDir)).join('');
+            let text = (node.children || []).map((n: any) => stringifyToTypst(n, baseDir, footnotes)).join('');
             if (ann.align) {
                 text = `#align(${ann.align})[${text}]`;
             }
@@ -173,19 +186,19 @@ function stringifyToTypst(node: any, baseDir: string): string {
         }
 
         case 'strong': {
-            const inner = (node.children || []).map((n: any) => stringifyToTypst(n, baseDir)).join('');
+            const inner = (node.children || []).map((n: any) => stringifyToTypst(n, baseDir, footnotes)).join('');
             result = `*${inner}*`;
             break;
         }
 
         case 'emphasis': {
-            const inner = (node.children || []).map((n: any) => stringifyToTypst(n, baseDir)).join('');
+            const inner = (node.children || []).map((n: any) => stringifyToTypst(n, baseDir, footnotes)).join('');
             result = `_${inner}_`;
             break;
         }
 
         case 'delete': {
-            const inner = (node.children || []).map((n: any) => stringifyToTypst(n, baseDir)).join('');
+            const inner = (node.children || []).map((n: any) => stringifyToTypst(n, baseDir, footnotes)).join('');
             result = `#strike[${inner}]`;
             break;
         }
@@ -201,15 +214,15 @@ function stringifyToTypst(node: any, baseDir: string): string {
         }
 
         case 'link': {
-            const linkText = (node.children || []).map((n: any) => stringifyToTypst(n, baseDir)).join('');
+            const linkText = (node.children || []).map((n: any) => stringifyToTypst(n, baseDir, footnotes)).join('');
             result = `#link("${node.url}")[${linkText}]`;
             break;
         }
 
         case 'list': {
-            const marker = node.ordered ? '+' : '-';
             const items = (node.children || []).map((listItem: any) => {
-                return stringifyToTypst(listItem, baseDir);
+                listItem._mk4Ordered = node.ordered;
+                return stringifyToTypst(listItem, baseDir, footnotes);
             }).join('\n');
 
             result = items;
@@ -217,8 +230,21 @@ function stringifyToTypst(node: any, baseDir: string): string {
         }
 
         case 'listItem': {
-            let content = (node.children || []).map((n: any) => stringifyToTypst(n, baseDir)).join(' ').trim();
-            const marker = node.parent?.ordered ? '+' : '-';
+            const children = node.children || [];
+            const textParts: string[] = [];
+            const nestedParts: string[] = [];
+
+            for (const child of children) {
+                if (child.type === 'list') {
+                    const nested = stringifyToTypst(child, baseDir, footnotes);
+                    nestedParts.push(nested.split('\n').map((line: string) => '  ' + line).join('\n'));
+                } else {
+                    textParts.push(stringifyToTypst(child, baseDir, footnotes));
+                }
+            }
+
+            let content = textParts.join(' ').trim();
+            const marker = node._mk4Ordered ? '+' : '-';
 
             // Détection et conversion propre des cases à cocher Markdown vers des boîtes Typst
             if (typeof node.checked === 'boolean') {
@@ -237,6 +263,10 @@ function stringifyToTypst(node: any, baseDir: string): string {
             } else {
                 result = `${marker} ${content}`;
             }
+
+            if (nestedParts.length > 0) {
+                result += '\n' + nestedParts.join('\n');
+            }
             break;
         }
             
@@ -244,9 +274,9 @@ function stringifyToTypst(node: any, baseDir: string): string {
             // On extrait uniquement le texte des paragraphes de la citation
             const text = (node.children || []).map((n: any) => {
                 if (n.type === 'paragraph') {
-                    return (n.children || []).map((sub: any) => stringifyToTypst(sub, baseDir)).join('');
+                    return (n.children || []).map((sub: any) => stringifyToTypst(sub, baseDir, footnotes)).join('');
                 }
-                return stringifyToTypst(n, baseDir);
+                return stringifyToTypst(n, baseDir, footnotes);
             }).join('\n');
 
             const buildAdmonition = (title: string, fill: string, stroke: string) => {
@@ -388,7 +418,7 @@ function stringifyToTypst(node: any, baseDir: string): string {
                 node.children.forEach((row: any) => {
                     if (row.children) {
                         row.children.forEach((cell: any) => {
-                            const cellContent = (cell.children || []).map((n: any) => stringifyToTypst(n, baseDir)).join('');
+                            const cellContent = (cell.children || []).map((n: any) => stringifyToTypst(n, baseDir, footnotes)).join('');
                             cells.push(`[${cellContent}]`);
                         });
                     }
@@ -450,6 +480,18 @@ function stringifyToTypst(node: any, baseDir: string): string {
             break;
         }
 
+        case 'footnoteReference': {
+            const fnContent = footnotes?.get(node.identifier) || '?';
+            result = `#footnote[${fnContent}]`;
+            break;
+        }
+
+        case 'footnoteDefinition': {
+            // Déjà traité dans le case 'root'
+            result = '';
+            break;
+        }
+
         default:
             result = '';
             break;
@@ -468,6 +510,7 @@ export function compileMarkdownToTypst(markdownText: string, documentPath: strin
         .use(remarkParse)
         .use(remarkGfm)
         .use(remarkMath)
+        .use(remarkFootnotes, { inlineNotes: true })
         .use(remarkTypstAnnotations);
 
     const ast = processor.parse(markdownText);
@@ -570,6 +613,7 @@ export function compileMarkdownToHtml(markdownText: string): string {
         .use(remarkParse)
         .use(remarkGfm)
         .use(remarkMath)
+        .use(remarkFootnotes, { inlineNotes: true })
         .use(remarkTypstAnnotations) // 1. Extrait les annotations
         .use(remarkHtmlAnnotations)  // 2. Les transforme en badges
         .use(remarkHtml, { sanitize: false }); // 3. Convertit le tout en HTML brut

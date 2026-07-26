@@ -48,9 +48,7 @@
   set math.equation(numbering: "(1)")
 
   // ── Numérotation ──
-  if numbering_style != none {
-    set heading(numbering: numbering_style)
-  }
+  set heading(numbering: numbering_style)
 
   // ── Style des titres ──
   show heading: it => {
