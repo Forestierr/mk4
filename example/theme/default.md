@@ -10,5 +10,17 @@
 AAA
 
 # Titre 2
+:align center
+:id ttte
 
 BBB
+
+*bbb*
+
+**bbb**
+
+~aaa~
+
+_as_ aaa d a a 
+
+`code en ligne`
