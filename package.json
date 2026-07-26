@@ -85,7 +85,11 @@
         "mk4.typst.defaultTheme": {
           "type": "string",
           "default": "default",
-          "enum": ["default", "modern", "academic"],
+          "enum": [
+            "default",
+            "modern",
+            "academic"
+          ],
           "description": "Le thème Typst par défaut à utiliser pour la compilation."
         },
         "mk4.typst.customThemePath": {
@@ -102,7 +106,8 @@
     "watch": "tsc -watch -p ./",
     "pretest": "npm run compile && npm run lint",
     "lint": "eslint src",
-    "test": "vscode-test",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "package": "vsce package",
     "publish-extension": "vsce publish"
   },
@@ -118,13 +123,15 @@
     "commitlint": "^21.2.1",
     "eslint": "^10.5.0",
     "typescript": "^6.0.3",
-    "typescript-eslint": "^8.61.1"
+    "typescript-eslint": "^8.61.1",
+    "vitest": "^4.1.10"
   },
   "overrides": {
     "diff": "^8.0.4",
     "serialize-javascript": "^7.0.6"
   },
   "dependencies": {
+    "remark-footnotes": "^3.0.0",
     "remark-gfm": "^1.0.0",
     "remark-html": "^13.0.2",
     "remark-math": "^4.0.0",
