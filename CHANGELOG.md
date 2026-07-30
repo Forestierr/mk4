@@ -5,6 +5,21 @@ Tous les changements notables sur l'extension "mk4" seront documentés dans ce f
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/), 
 et ce projet adhère au [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0](https://github.com/Forestierr/mk4/compare/v1.1.0...v1.2.0) (2026-07-30)
+
+
+### Features
+
+* ajout des foot notes & listes imbriquées & références ([a299588](https://github.com/Forestierr/mk4/commit/a29958806b1b94089719317f545eba60f9fd5e0d))
+* bannière d'erreur & soulignement d'erreur ([f304c83](https://github.com/Forestierr/mk4/commit/f304c8396372ea177fb078ea6f18e1b2241967c7))
+* soulignement annotations inconues & formatage inline ([fb2d7f7](https://github.com/Forestierr/mk4/commit/fb2d7f787bc4652b8e6921fce1d4aa8b0b38b004))
+
+
+### Bug Fixes
+
+* suppresion de la dernière page après resize ([5fce718](https://github.com/Forestierr/mk4/commit/5fce71814cfca0be6c809f1058ac4b66c1e23a61))
+* suppression des fichiers temporaires ([3ff066a](https://github.com/Forestierr/mk4/commit/3ff066adbb9e1b4d658f2a3c5d0274aab9239515))
+
 ## [1.1.0](https://github.com/Forestierr/mk4/compare/v1.0.0...v1.1.0) (2026-07-23)
 
 
