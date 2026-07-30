@@ -153,6 +153,58 @@ _Exemple : [theme.md](example/theme/theme.md)_
 
 _Exemple : [template.typ](example/theme/template.typ)_
 
+### Formatage inline
+
+Le formatage standard Markdown est traduit en Typst natif :
+
+| Markdown | Rendu | Typst |
+| --- | --- | --- |
+| `**gras**` | **gras** | `*gras*` |
+| `*italique*` | *italique* | `_italique_` |
+| `~~barré~~` | ~~barré~~ | `#strike[barré]` |
+| `` `code` `` | `code` | `` `code` `` |
+
+### Listes imbriquées
+
+Les listes simples, ordonnées et imbriquées sont supportées nativement :
+
+```markdown
+- Frontend
+  - React
+  - Vue
+    - Composition API
+    - Options API
+- Backend
+  - Node.js
+```
+
+_Exemple : [liste.md](example/basics/liste.md)_
+
+### Notes de bas de page
+
+Ajoutez des notes avec la syntaxe standard Markdown :
+
+```markdown
+Ceci est un texte avec une note[^1].
+
+[^1]: Contenu de la note de bas de page.
+```
+
+_Exemple : [footnote.md](example/basics/footnote.md)_
+
+### Références croisées
+
+Utilisez `:id` pour nommer un élément et `@id` pour le référencer :
+
+```markdown
+## Mon titre
+:id sec_intro
+
+Voir la @sec_intro pour plus de détails.
+```
+
+_Exemple : [reference.md](example/basics/reference.md)_
+
 ## Commandes & Interface
 
 MK4 ajoute 4 boutons pratiques en haut à droite de l'éditeur lors de l'édition d'un fichier Markdown :

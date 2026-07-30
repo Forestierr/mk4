@@ -40,9 +40,7 @@
   set par(justify: true, leading: 0.7em)
 
   // ── Numérotation des titres ──
-  if numbering_style != none {
-    set heading(numbering: numbering_style)
-  }
+  set heading(numbering: numbering_style)
 
   // ── Style des titres ──
   show heading.where(level: 1): it => {

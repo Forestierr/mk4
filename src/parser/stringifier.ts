@@ -1,119 +1,47 @@
-import * as vscode from 'vscode';
-import * as fs from 'fs';
-import * as path from 'path';
-import remarkParse from 'remark-parse';
-import unified from 'unified';
-import visit from 'unist-util-visit';
-
-import remarkGfm from 'remark-gfm';
-import remarkMath from 'remark-math';
-import remarkHtml from 'remark-html';
-
-function remarkTypstAnnotations() {
-    return (tree: any) => {
-        visit(tree, 'paragraph', (node: any, index: number | undefined, parent: any) => {
-            if (!node.children || node.children.length === 0) {
-                return;
-            }
-
-            // On regarde le TOUT DERNIER élément du paragraphe
-            const lastChild = node.children[node.children.length - 1];
-            
-            if (lastChild.type === 'text') {
-                const lines = lastChild.value.split('\n');
-                const annotations: Record<string, string | boolean> = {};
-                let i = lines.length - 1;
-                
-                // On remonte les lignes depuis la fin pour trouver les :annotations
-                while (i >= 0) {
-                    const trimmed = lines[i].trim();
-                    if (trimmed === '') {
-                        i--;
-                        continue;
-                    }
-                    if (trimmed.startsWith(':')) {
-                        const spaceIdx = trimmed.indexOf(' ');
-                        if (spaceIdx !== -1) {
-                            annotations[trimmed.substring(1, spaceIdx)] = trimmed.substring(spaceIdx + 1).trim();
-                        } else {
-                            annotations[trimmed.substring(1)] = true;
-                        }
-                        i--;
-                    } else {
-                        break; // Fin des annotations
-                    }
-                }
-
-                // Si on a trouvé des annotations à la fin de ce bloc
-                if (Object.keys(annotations).length > 0) {
-                    const cleanText = lines.slice(0, i + 1).join('\n').trimEnd();
-                    lastChild.value = cleanText;
-
-                    // Est-ce que ce paragraphe n'était QUE des annotations ?
-                    const isEntirelyAnnotations = node.children.length === 1 && cleanText === '';
-
-                    if (isEntirelyAnnotations) {
-                        // On les donne au bloc du dessus (ex: un bloc de code juste avant)
-                        if (parent && index !== undefined && index > 0) {
-                            const prevNode = parent.children[index - 1];
-                            prevNode.data = prevNode.data || {};
-                            prevNode.data.typstAnnotations = { ...(prevNode.data.typstAnnotations || {}), ...annotations };
-                        }
-                        // Premier bloc, annotation du document
-                        else if (parent && parent.type === 'root' && index === 0) {
-                            parent.data = parent.data || {};
-                            parent.data.typstAnnotations = { ...(parent.data.typstAnnotations || {}), ...annotations };
-                        }
-                        // On supprime ce paragraphe vide
-                        parent.children.splice(index, 1);
-                        return index;
-                    } else {
-                        // On les garde pour ce paragraphe (ex: une image suivie de ses annotations)
-                        node.data = node.data || {};
-                        node.data.typstAnnotations = { ...(node.data.typstAnnotations || {}), ...annotations };
-                        
-                        // Si le texte est devenu vide, on le supprime de l'arbre
-                        if (cleanText === '') {
-                            node.children.pop();
-                        }
-                    }
-                }
-            }
-        });
-    };
-}
-
-function stringifyToTypst(node: any, baseDir: string): string {
+/**
+ * Convertit récursivement un nœud de l'AST remark en code Typst.
+ */
+export function stringifyToTypst(node: any, baseDir: string, footnotes?: Map<string, string>): string {
     const ann = node.data?.typstAnnotations || {};
     let result = '';
 
     switch (node.type) {
         case 'root': {
             let setup = '';
-
             setup += `#let in_outline = state("in_outline", false)\n`;
             setup += `#show outline: it => { in_outline.update(true); it; in_outline.update(false) }\n\n`;
 
-            result = setup + (node.children || []).map((n: any) => {
-                let childResult = stringifyToTypst(n, baseDir);
-                // Injecter un marqueur de position pour chaque bloc de premier niveau
-                if (n.position && n.position.start) {
-                    childResult = `#metadata("${n.position.start.line}") <mk4_loc>\n` + childResult;
+            // Collecter les définitions de notes de bas de page
+            const footnoteMap = new Map<string, string>();
+            for (const child of (node.children || [])) {
+                if (child.type === 'footnoteDefinition') {
+                    const fnContent = (child.children || [])
+                        .map((n: any) => stringifyToTypst(n, baseDir, footnoteMap)).join('');
+                    footnoteMap.set(child.identifier, fnContent);
                 }
-                return childResult;
-            }).join('\n\n');
+            }
+
+            result = setup + (node.children || [])
+                .filter((n: any) => n.type !== 'footnoteDefinition')
+                .map((n: any) => {
+                    let childResult = stringifyToTypst(n, baseDir, footnoteMap);
+                    // Injecter un marqueur de position pour chaque bloc de premier niveau
+                    if (n.position && n.position.start) {
+                        childResult = `#metadata("${n.position.start.line}") <mk4_loc>\n` + childResult;
+                    }
+                    return childResult;
+                }).join('\n\n');
             break;
         }
-            
+
         case 'heading': {
-            const title = (node.children || []).map((n: any) => stringifyToTypst(n, baseDir)).join('');
-            
+            const title = (node.children || []).map((n: any) => stringifyToTypst(n, baseDir, footnotes)).join('');
+
             let headingCode = `#heading(level: ${node.depth}`;
             if (ann.numbering === 'false' || ann.numbering === false) {
                 headingCode += `, numbering: none`;
             }
-            
-            // --- NOUVEAU : CHANGEMENT DYNAMIQUE DU TEXTE ---
+
             if (ann.short) {
                 // Si Typst dessine l'outline, on donne le short, sinon on donne le long
                 headingCode += `)[#context if in_outline.get() [${ann.short}] else [${title}]]`;
@@ -127,17 +55,15 @@ function stringifyToTypst(node: any, baseDir: string): string {
             if (ann.align) {
                 headingCode = `#align(${ann.align})[${headingCode}]`;
             }
-            
-
 
             result = headingCode;
             break;
         }
-        
+
         case 'paragraph': {
             if (node.children?.length === 1 && node.children[0].type === 'image') {
-                const img = node.children[0];
-                let imgCode = `image("${img.url}"`;
+                const imgNode = node.children[0];
+                let imgCode = `image("${imgNode.url}"`;
                 if (ann.width) {
                     imgCode += `, width: ${ann.width}`;
                 }
@@ -146,7 +72,7 @@ function stringifyToTypst(node: any, baseDir: string): string {
                 if (ann.caption) {
                     imgCode = `figure(\n  ${imgCode},\n  caption: [${ann.caption}]\n)`;
                 }
-                
+
                 let pResult = `#${imgCode}`;
                 if (ann.id) {
                     pResult += ` <${ann.id}>`;
@@ -159,16 +85,39 @@ function stringifyToTypst(node: any, baseDir: string): string {
                 break;
             }
 
-            let text = (node.children || []).map((n: any) => stringifyToTypst(n, baseDir)).join('');
+            let text = (node.children || []).map((n: any) => stringifyToTypst(n, baseDir, footnotes)).join('');
             if (ann.align) {
                 text = `#align(${ann.align})[${text}]`;
             }
             result = text;
             break;
         }
-            
+
         case 'text': {
             result = node.value;
+            break;
+        }
+
+        case 'strong': {
+            const inner = (node.children || []).map((n: any) => stringifyToTypst(n, baseDir, footnotes)).join('');
+            result = `*${inner}*`;
+            break;
+        }
+
+        case 'emphasis': {
+            const inner = (node.children || []).map((n: any) => stringifyToTypst(n, baseDir, footnotes)).join('');
+            result = `_${inner}_`;
+            break;
+        }
+
+        case 'delete': {
+            const inner = (node.children || []).map((n: any) => stringifyToTypst(n, baseDir, footnotes)).join('');
+            result = `#strike[${inner}]`;
+            break;
+        }
+
+        case 'inlineCode': {
+            result = `\`${node.value}\``;
             break;
         }
 
@@ -178,29 +127,41 @@ function stringifyToTypst(node: any, baseDir: string): string {
         }
 
         case 'link': {
-            const linkText = (node.children || []).map((n: any) => stringifyToTypst(n, baseDir)).join('');
+            const linkText = (node.children || []).map((n: any) => stringifyToTypst(n, baseDir, footnotes)).join('');
             result = `#link("${node.url}")[${linkText}]`;
             break;
         }
 
         case 'list': {
-            const marker = node.ordered ? '+' : '-';
             const items = (node.children || []).map((listItem: any) => {
-                return stringifyToTypst(listItem, baseDir);
+                listItem._mk4Ordered = node.ordered;
+                return stringifyToTypst(listItem, baseDir, footnotes);
             }).join('\n');
-
             result = items;
             break;
         }
 
         case 'listItem': {
-            let content = (node.children || []).map((n: any) => stringifyToTypst(n, baseDir)).join(' ').trim();
-            const marker = node.parent?.ordered ? '+' : '-';
+            const children = node.children || [];
+            const textParts: string[] = [];
+            const nestedParts: string[] = [];
+
+            for (const child of children) {
+                if (child.type === 'list') {
+                    const nested = stringifyToTypst(child, baseDir, footnotes);
+                    nestedParts.push(nested.split('\n').map((line: string) => '  ' + line).join('\n'));
+                } else {
+                    textParts.push(stringifyToTypst(child, baseDir, footnotes));
+                }
+            }
+
+            let content = textParts.join(' ').trim();
+            const marker = node._mk4Ordered ? '+' : '-';
 
             // Détection et conversion propre des cases à cocher Markdown vers des boîtes Typst
             if (typeof node.checked === 'boolean') {
-                const box = node.checked 
-                    ? `#box(width: 8pt, height: 8pt, stroke: 0.5pt, align(center)[#text(size: 6pt)[✓]])` 
+                const box = node.checked
+                    ? `#box(width: 8pt, height: 8pt, stroke: 0.5pt, align(center)[#text(size: 6pt)[✓]])`
                     : `#box(width: 8pt, height: 8pt, stroke: 0.5pt)`;
                 result = `${marker} ${box} ${content}`;
             } else if (content.startsWith('[ ]')) {
@@ -214,16 +175,20 @@ function stringifyToTypst(node: any, baseDir: string): string {
             } else {
                 result = `${marker} ${content}`;
             }
+
+            if (nestedParts.length > 0) {
+                result += '\n' + nestedParts.join('\n');
+            }
             break;
         }
-            
+
         case 'blockquote': {
             // On extrait uniquement le texte des paragraphes de la citation
             const text = (node.children || []).map((n: any) => {
                 if (n.type === 'paragraph') {
-                    return (n.children || []).map((sub: any) => stringifyToTypst(sub, baseDir)).join('');
+                    return (n.children || []).map((sub: any) => stringifyToTypst(sub, baseDir, footnotes)).join('');
                 }
-                return stringifyToTypst(n, baseDir);
+                return stringifyToTypst(n, baseDir, footnotes);
             }).join('\n');
 
             const buildAdmonition = (title: string, fill: string, stroke: string) => {
@@ -245,7 +210,7 @@ function stringifyToTypst(node: any, baseDir: string): string {
             } else {
                 // Citation classique propre avec auteur et source
                 let quoteOptions = 'block: true';
-                let attributionParts = [];
+                const attributionParts: string[] = [];
                 if (ann.author) {
                     attributionParts.push(ann.author);
                 }
@@ -253,16 +218,14 @@ function stringifyToTypst(node: any, baseDir: string): string {
                 if (link) {
                     attributionParts.push(`#link("${link}")[Source]`);
                 }
-                
                 if (attributionParts.length > 0) {
                     quoteOptions += `, attribution: [${attributionParts.join(' — ')}]`;
                 }
-                
                 result = `#quote(${quoteOptions})[${text}]`;
             }
             break;
         }
-        
+
         case 'code': {
             const lang = node.lang ? node.lang.toLowerCase() : '';
             const hasLines = ann.lines === 'true' || ann.lines === true;
@@ -273,7 +236,6 @@ function stringifyToTypst(node: any, baseDir: string): string {
 
             // 2. Numérotation et Surlignage combinés
             if (hasLines || hasHighlight) {
-                // Parseur intelligent pour la syntaxe des lignes à surligner
                 let hlLinesStr = '()';
                 if (hasHighlight) {
                     const hl: number[] = [];
@@ -297,17 +259,13 @@ function stringifyToTypst(node: any, baseDir: string): string {
                             }
                         }
                     }
-                    // Conversion en tableau Typst (avec une virgule finale si 1 seul élément pour respecter la syntaxe Typst)
                     hlLinesStr = `(${hl.join(', ')}${hl.length === 1 ? ',' : ''})`;
                 }
 
-                // Configuration de la grille Typst
                 const cols = hasLines ? '(auto, 1fr)' : '(1fr,)';
                 const gutter = hasLines ? '1em' : '0pt';
-
-                // Construction de la fonction de mapping Typst pour dessiner chaque ligne
                 let mapFunc = `((i, line)) => {\n      let ln = i + 1\n      let bg = if ln in hl_lines { rgb(255, 235, 50, 40%) } else { none }\n      let styled_line = block(width: 100%, fill: bg, inset: (x: 4pt, y: 1.5pt), radius: 2pt, line)\n      `;
-                
+
                 if (hasLines) {
                     mapFunc += `(align(right, text(fill: luma(150), size: 0.85em, str(ln))), styled_line)\n    }`;
                 } else {
@@ -344,17 +302,12 @@ function stringifyToTypst(node: any, baseDir: string): string {
 
         case 'table': {
             const hasCompact = ann.compact === 'true' || ann.compact === true;
-            
-            // 1. Détermination de l'alignement des colonnes (natif Markdown)
-            // remark-gfm fournit un tableau node.align avec 'left', 'center', 'right' ou null
+
+            // 1. Alignement des colonnes
             const aligns = (node.align || []).map((a: string | null) => {
-                if (a === 'center') {
-                    return 'center';
-                }
-                if (a === 'right') {
-                    return 'right';
-                }
-                return 'left'; // Alignement par défaut
+                if (a === 'center') { return 'center'; }
+                if (a === 'right') { return 'right'; }
+                return 'left';
             });
             const columnsDef = aligns.length > 0 ? `(${aligns.map(() => 'auto').join(', ')})` : 'auto';
             const alignDef = aligns.length > 0 ? `(${aligns.join(', ')})` : 'left';
@@ -365,7 +318,7 @@ function stringifyToTypst(node: any, baseDir: string): string {
                 node.children.forEach((row: any) => {
                     if (row.children) {
                         row.children.forEach((cell: any) => {
-                            const cellContent = (cell.children || []).map((n: any) => stringifyToTypst(n, baseDir)).join('');
+                            const cellContent = (cell.children || []).map((n: any) => stringifyToTypst(n, baseDir, footnotes)).join('');
                             cells.push(`[${cellContent}]`);
                         });
                     }
@@ -375,7 +328,6 @@ function stringifyToTypst(node: any, baseDir: string): string {
             // 3. Configuration du tableau
             let tableArgs = `columns: ${columnsDef}, align: ${alignDef}`;
             if (hasCompact) {
-                // On réduit drastiquement les marges internes (inset) pour le mode compact
                 tableArgs += `, inset: (x: 0.4em, y: 0.3em)`;
             }
 
@@ -414,7 +366,7 @@ function stringifyToTypst(node: any, baseDir: string): string {
             result = `$${node.value}$`;
             break;
         }
-            
+
         case 'math': {
             let mathCode = `$ ${node.value} $`;
             if (ann.id) {
@@ -424,6 +376,18 @@ function stringifyToTypst(node: any, baseDir: string): string {
                 mathCode = `#align(${ann.align})[${mathCode}]`;
             }
             result = mathCode;
+            break;
+        }
+
+        case 'footnoteReference': {
+            const fnContent = footnotes?.get(node.identifier) || '?';
+            result = `#footnote[${fnContent}]`;
+            break;
+        }
+
+        case 'footnoteDefinition': {
+            // Déjà traité dans le case 'root'
+            result = '';
             break;
         }
 
@@ -438,120 +402,4 @@ function stringifyToTypst(node: any, baseDir: string): string {
     }
 
     return result;
-}
-
-export function compileMarkdownToTypst(markdownText: string, documentPath: string, extensionContext: vscode.ExtensionContext): string {
-    const processor = unified()
-        .use(remarkParse)
-        .use(remarkGfm)
-        .use(remarkMath)
-        .use(remarkTypstAnnotations);
-
-    const ast = processor.parse(markdownText);
-    const transformedAst = processor.runSync(ast);
-    const baseDir = path.dirname(documentPath);
-    
-    const bodyTypst = stringifyToTypst(transformedAst, baseDir);
-
-    // Extraction des métadonnées en premier (pour vérifier si :theme est présent)
-    const ann = (transformedAst.data as any)?.typstAnnotations || {};
-
-    // Récupération des paramètres VS Code
-    const config = vscode.workspace.getConfiguration('mk4');
-    const defaultThemeName = config.get<string>('typst.defaultTheme') || 'default';
-    const settingsCustomThemePath = config.get<string>('typst.customThemePath');
-
-    // --- LOGIQUE DE PRIORITÉ ABSOLUE ---
-    let finalThemePath = '';
-
-    if (ann.theme) {
-        // PRIORITÉ 1 : La balise :theme dans le fichier Markdown
-        // On résout le chemin (relatif ou absolu) par rapport à l'emplacement du fichier Markdown
-        finalThemePath = path.resolve(baseDir, ann.theme);
-    } 
-    else if (settingsCustomThemePath && fs.existsSync(settingsCustomThemePath)) {
-        // PRIORITÉ 2 : Le chemin personnalisé dans les paramètres VS Code
-        finalThemePath = settingsCustomThemePath;
-    } 
-    else {
-        // PRIORITÉ 3 : Le thème par défaut fourni avec l'extension
-        finalThemePath = path.join(extensionContext.extensionPath, 'themes', `${defaultThemeName}.typ`);
-    }
-
-    // --- CHARGEMENT DU CODE DU THÈME ---
-    let themeCode = '';
-    try {
-        if (fs.existsSync(finalThemePath)) {
-            themeCode = fs.readFileSync(finalThemePath, 'utf-8');
-        } else {
-            console.error(`Le thème Typst est introuvable au chemin : ${finalThemePath}`);
-            // Fallback de sécurité
-            themeCode = `#let conf(title: none, subtitle: none, author: none, date: none, numbering_style: none, toc: false, doc) = { doc }`;
-        }
-    } catch (e) {
-        console.error("Erreur lors de la lecture du thème Typst :", e);
-        themeCode = `#let conf(title: none, subtitle: none, author: none, date: none, numbering_style: none, toc: false, doc) = { doc }`;
-    }
-
-    // Formatage des autres valeurs pour Typst
-    const title = ann.title ? `"${ann.title}"` : 'none';
-    const subtitle = ann.subtitle ? `"${ann.subtitle}"` : 'none';
-    const author = ann.author ? `"${ann.author}"` : 'none';
-    const date = ann.date ? `"${ann.date}"` : 'none';
-    const numberingStyle = ann.numbering ? `"${ann.numbering}"` : 'none';
-    const toc = ann.toc ? 'true' : 'false';
-
-    // Assemblage final
-    const finalTypst = `${themeCode}
-
-#show: doc => conf(
-  title: ${title},
-  subtitle: ${subtitle},
-  author: ${author},
-  date: ${date},
-  numbering_style: ${numberingStyle},
-  toc: ${toc},
-  doc
-)
-
-${bodyTypst}
-`;
-
-    return finalTypst;
-}
-
-function remarkHtmlAnnotations() {
-    return (tree: any) => {
-        visit(tree, (node: any) => {
-            const anns = node.data?.typstAnnotations;
-            if (anns && Object.keys(anns).length > 0) {
-                // Création des badges HTML pour chaque annotation
-                const badgesHtml = Object.entries(anns)
-                    .map(([k, v]) => `<span class="mk4-badge">:${k}${v === true ? '' : ' ' + v}</span>`)
-                    .join(' ');
-
-                // On injecte ces badges à la fin de l'élément (titre, image, paragraphe...)
-                if (node.children) {
-                    node.children.push({
-                        type: 'html',
-                        value: ` <span class="mk4-badges-container">${badgesHtml}</span>`
-                    });
-                }
-            }
-        });
-    };
-}
-
-export function compileMarkdownToHtml(markdownText: string): string {
-    const processor = unified()
-        .use(remarkParse)
-        .use(remarkGfm)
-        .use(remarkMath)
-        .use(remarkTypstAnnotations) // 1. Extrait les annotations
-        .use(remarkHtmlAnnotations)  // 2. Les transforme en badges
-        .use(remarkHtml, { sanitize: false }); // 3. Convertit le tout en HTML brut
-
-    const ast = processor.parse(markdownText);
-    const transformedAst = processor.runSync(ast);
-    return processor.stringify(transformedAst as any) as string;
 }
