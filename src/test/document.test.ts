@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import * as path from 'path';
-import { compileMarkdownToTypst } from '../parser';
+import { compileMarkdownToTypst } from '../parser/index';
 
 const mockContext = { extensionPath: path.resolve(__dirname, '..', '..') } as any;
 
