@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
+import { execFile } from 'child_process';
 
 import { registerPreviewCommand } from './commands/preview';
 import { registerExportCommands } from './commands/export';
@@ -11,6 +12,20 @@ import { createCompletionProvider } from './providers/completion';
 const activeSessions: { dir: string; id: string }[] = [];
 
 export function activate(context: vscode.ExtensionContext) {
+    // Vérification de la disponibilité du binaire Typst (non-bloquante)
+    execFile('typst', ['--version'], (error) => {
+        if (error && (error as NodeJS.ErrnoException).code === 'ENOENT') {
+            vscode.window.showErrorMessage(
+                "MK4 : la commande `typst` est introuvable. Veuillez l'installer et l'ajouter à votre PATH.",
+                'Installer Typst'
+            ).then(choice => {
+                if (choice === 'Installer Typst') {
+                    vscode.env.openExternal(vscode.Uri.parse('https://typst.app/docs/'));
+                }
+            });
+        }
+    });
+
     // Nettoyage des fichiers temporaires orphelins au démarrage
     vscode.workspace.findFiles('**/.mk4-{temp,export}-*').then(files => {
         for (const file of files) {
