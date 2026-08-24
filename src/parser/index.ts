@@ -10,6 +10,7 @@ import remarkHtml from 'remark-html';
 import { remarkTypstAnnotations, remarkHtmlAnnotations } from './annotations';
 import { stringifyToTypst } from './stringifier';
 import { loadTheme, assembleTypstDocument } from './theme';
+import type { MK4NodeWithData } from './types';
 
 /**
  * Compile un document Markdown en code Typst complet (thème inclus).
@@ -30,8 +31,8 @@ export function compileMarkdownToTypst(
     const transformedAst = processor.runSync(ast);
     const baseDir = path.dirname(documentPath);
 
-    const bodyTypst = stringifyToTypst(transformedAst, baseDir);
-    const ann = (transformedAst.data as any)?.typstAnnotations || {};
+    const bodyTypst = stringifyToTypst(transformedAst as unknown as MK4NodeWithData, baseDir);
+    const ann = (transformedAst.data as MK4NodeWithData['data'])?.typstAnnotations || {};
     const themeCode = loadTheme(ann, baseDir, extensionContext);
 
     return assembleTypstDocument(themeCode, bodyTypst, ann);

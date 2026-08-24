@@ -1,4 +1,5 @@
 import visit from 'unist-util-visit';
+import type { MK4NodeData } from './types';
 
 /**
  * Plugin remark : extrait les annotations `:key value` qui suivent un bloc
@@ -50,22 +51,24 @@ export function remarkTypstAnnotations() {
                     if (isEntirelyAnnotations) {
                         // On les donne au bloc du dessus (ex: un bloc de code juste avant)
                         if (parent && index !== undefined && index > 0) {
-                            const prevNode = parent.children[index - 1];
+                            const prevNode = parent.children[index - 1] as { data?: MK4NodeData };
                             prevNode.data = prevNode.data || {};
                             prevNode.data.typstAnnotations = { ...(prevNode.data.typstAnnotations || {}), ...annotations };
                         }
                         // Premier bloc, annotation du document
                         else if (parent && parent.type === 'root' && index === 0) {
-                            parent.data = parent.data || {};
-                            parent.data.typstAnnotations = { ...(parent.data.typstAnnotations || {}), ...annotations };
+                            const parentTyped = parent as { data?: MK4NodeData; type: string };
+                            parentTyped.data = parentTyped.data || {};
+                            parentTyped.data.typstAnnotations = { ...(parentTyped.data.typstAnnotations || {}), ...annotations };
                         }
                         // On supprime ce paragraphe vide
                         parent.children.splice(index, 1);
                         return index;
                     } else {
                         // On les garde pour ce paragraphe (ex: une image suivie de ses annotations)
-                        node.data = node.data || {};
-                        node.data.typstAnnotations = { ...(node.data.typstAnnotations || {}), ...annotations };
+                        const nodeTyped = node as { data?: MK4NodeData; children: unknown[] };
+                        nodeTyped.data = nodeTyped.data || {};
+                        nodeTyped.data.typstAnnotations = { ...(nodeTyped.data.typstAnnotations || {}), ...annotations };
 
                         // Si le texte est devenu vide, on le supprime de l'arbre
                         if (cleanText === '') {
@@ -85,7 +88,8 @@ export function remarkTypstAnnotations() {
 export function remarkHtmlAnnotations() {
     return (tree: any) => {
         visit(tree, (node: any) => {
-            const anns = node.data?.typstAnnotations;
+            const typedNode = node as { data?: MK4NodeData; children?: unknown[] };
+            const anns = typedNode.data?.typstAnnotations;
             if (anns && Object.keys(anns).length > 0) {
                 // Création des badges HTML pour chaque annotation
                 const badgesHtml = Object.entries(anns)
@@ -93,8 +97,8 @@ export function remarkHtmlAnnotations() {
                     .join(' ');
 
                 // On injecte ces badges à la fin de l'élément (titre, image, paragraphe...)
-                if (node.children) {
-                    node.children.push({
+                if (typedNode.children) {
+                    (typedNode.children as unknown[]).push({
                         type: 'html',
                         value: ` <span class="mk4-badges-container">${badgesHtml}</span>`
                     });
