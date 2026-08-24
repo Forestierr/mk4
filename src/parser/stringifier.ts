@@ -1,8 +1,14 @@
+import type { Heading, Paragraph, Image, Link, List, Blockquote, Code, Table } from 'mdast';
+import type {
+    TypstAnnotations, MK4NodeWithData, MK4NodeData,
+    MK4ListItem, FootnoteReferenceNode, FootnoteDefinitionNode,
+} from './types';
+
 /**
  * Convertit récursivement un nœud de l'AST remark en code Typst.
  */
-export function stringifyToTypst(node: any, baseDir: string, footnotes?: Map<string, string>): string {
-    const ann = node.data?.typstAnnotations || {};
+export function stringifyToTypst(node: MK4NodeWithData, baseDir: string, footnotes?: Map<string, string>): string {
+    const ann: TypstAnnotations = node.data?.typstAnnotations ?? {};
     let result = '';
 
     switch (node.type) {
@@ -14,20 +20,22 @@ export function stringifyToTypst(node: any, baseDir: string, footnotes?: Map<str
             // Collecter les définitions de notes de bas de page
             const footnoteMap = new Map<string, string>();
             for (const child of (node.children || [])) {
-                if (child.type === 'footnoteDefinition') {
-                    const fnContent = (child.children || [])
-                        .map((n: any) => stringifyToTypst(n, baseDir, footnoteMap)).join('');
-                    footnoteMap.set(child.identifier, fnContent);
+                const childNode = child as unknown as FootnoteDefinitionNode & { data?: MK4NodeData };
+                if (childNode.type === 'footnoteDefinition') {
+                    const fnContent = (childNode.children || [])
+                        .map((n) => stringifyToTypst(n as unknown as MK4NodeWithData, baseDir, footnoteMap)).join('');
+                    footnoteMap.set(childNode.identifier, fnContent);
                 }
             }
 
             result = setup + (node.children || [])
-                .filter((n: any) => n.type !== 'footnoteDefinition')
-                .map((n: any) => {
-                    let childResult = stringifyToTypst(n, baseDir, footnoteMap);
+                .filter((n) => (n as unknown as { type: string }).type !== 'footnoteDefinition')
+                .map((n) => {
+                    const childNode = n as unknown as MK4NodeWithData & { position?: { start: { line: number } } };
+                    let childResult = stringifyToTypst(childNode, baseDir, footnoteMap);
                     // Injecter un marqueur de position pour chaque bloc de premier niveau
-                    if (n.position && n.position.start) {
-                        childResult = `#metadata("${n.position.start.line}") <mk4_loc>\n` + childResult;
+                    if (childNode.position && childNode.position.start) {
+                        childResult = `#metadata("${childNode.position.start.line}") <mk4_loc>\n` + childResult;
                     }
                     return childResult;
                 }).join('\n\n');
@@ -35,9 +43,10 @@ export function stringifyToTypst(node: any, baseDir: string, footnotes?: Map<str
         }
 
         case 'heading': {
-            const title = (node.children || []).map((n: any) => stringifyToTypst(n, baseDir, footnotes)).join('');
+            const hNode = node as unknown as Heading & { data?: MK4NodeData };
+            const title = hNode.children.map((n) => stringifyToTypst(n as unknown as MK4NodeWithData, baseDir, footnotes)).join('');
 
-            let headingCode = `#heading(level: ${node.depth}`;
+            let headingCode = `#heading(level: ${hNode.depth}`;
             if (ann.numbering === 'false' || ann.numbering === false) {
                 headingCode += `, numbering: none`;
             }
@@ -61,8 +70,9 @@ export function stringifyToTypst(node: any, baseDir: string, footnotes?: Map<str
         }
 
         case 'paragraph': {
-            if (node.children?.length === 1 && node.children[0].type === 'image') {
-                const imgNode = node.children[0];
+            const pNode = node as unknown as Paragraph & { data?: MK4NodeData };
+            if (pNode.children?.length === 1 && pNode.children[0].type === 'image') {
+                const imgNode = pNode.children[0] as unknown as Image;
                 let imgCode = `image("${imgNode.url}"`;
                 if (ann.width) {
                     imgCode += `, width: ${ann.width}`;
@@ -85,7 +95,7 @@ export function stringifyToTypst(node: any, baseDir: string, footnotes?: Map<str
                 break;
             }
 
-            let text = (node.children || []).map((n: any) => stringifyToTypst(n, baseDir, footnotes)).join('');
+            let text = pNode.children.map((n) => stringifyToTypst(n as unknown as MK4NodeWithData, baseDir, footnotes)).join('');
             if (ann.align) {
                 text = `#align(${ann.align})[${text}]`;
             }
@@ -99,19 +109,19 @@ export function stringifyToTypst(node: any, baseDir: string, footnotes?: Map<str
         }
 
         case 'strong': {
-            const inner = (node.children || []).map((n: any) => stringifyToTypst(n, baseDir, footnotes)).join('');
+            const inner = (node.children || []).map((n) => stringifyToTypst(n as unknown as MK4NodeWithData, baseDir, footnotes)).join('');
             result = `*${inner}*`;
             break;
         }
 
         case 'emphasis': {
-            const inner = (node.children || []).map((n: any) => stringifyToTypst(n, baseDir, footnotes)).join('');
+            const inner = (node.children || []).map((n) => stringifyToTypst(n as unknown as MK4NodeWithData, baseDir, footnotes)).join('');
             result = `_${inner}_`;
             break;
         }
 
         case 'delete': {
-            const inner = (node.children || []).map((n: any) => stringifyToTypst(n, baseDir, footnotes)).join('');
+            const inner = (node.children || []).map((n) => stringifyToTypst(n as unknown as MK4NodeWithData, baseDir, footnotes)).join('');
             result = `#strike[${inner}]`;
             break;
         }
@@ -122,45 +132,49 @@ export function stringifyToTypst(node: any, baseDir: string, footnotes?: Map<str
         }
 
         case 'image': {
-            result = `#image("${node.url}")`;
+            result = `#image("${(node as unknown as Image).url}")`;
             break;
         }
 
         case 'link': {
-            const linkText = (node.children || []).map((n: any) => stringifyToTypst(n, baseDir, footnotes)).join('');
-            result = `#link("${node.url}")[${linkText}]`;
+            const linkNode = node as unknown as Link & { data?: MK4NodeData };
+            const linkText = linkNode.children.map((n) => stringifyToTypst(n as unknown as MK4NodeWithData, baseDir, footnotes)).join('');
+            result = `#link("${linkNode.url}")[${linkText}]`;
             break;
         }
 
         case 'list': {
-            const items = (node.children || []).map((listItem: any) => {
-                listItem._mk4Ordered = node.ordered;
-                return stringifyToTypst(listItem, baseDir, footnotes);
+            const listNode = node as unknown as List & { data?: MK4NodeData };
+            const items = listNode.children.map((listItem) => {
+                const item = listItem as unknown as MK4ListItem & { data?: MK4NodeData };
+                item._mk4Ordered = listNode.ordered ?? false;
+                return stringifyToTypst(item, baseDir, footnotes);
             }).join('\n');
             result = items;
             break;
         }
 
         case 'listItem': {
-            const children = node.children || [];
+            const liNode = node as unknown as MK4ListItem & { data?: MK4NodeData };
+            const children = liNode.children || [];
             const textParts: string[] = [];
             const nestedParts: string[] = [];
 
             for (const child of children) {
                 if (child.type === 'list') {
-                    const nested = stringifyToTypst(child, baseDir, footnotes);
+                    const nested = stringifyToTypst(child as unknown as MK4NodeWithData, baseDir, footnotes);
                     nestedParts.push(nested.split('\n').map((line: string) => '  ' + line).join('\n'));
                 } else {
-                    textParts.push(stringifyToTypst(child, baseDir, footnotes));
+                    textParts.push(stringifyToTypst(child as unknown as MK4NodeWithData, baseDir, footnotes));
                 }
             }
 
             let content = textParts.join(' ').trim();
-            const marker = node._mk4Ordered ? '+' : '-';
+            const marker = liNode._mk4Ordered ? '+' : '-';
 
             // Détection et conversion propre des cases à cocher Markdown vers des boîtes Typst
-            if (typeof node.checked === 'boolean') {
-                const box = node.checked
+            if (typeof liNode.checked === 'boolean') {
+                const box = liNode.checked
                     ? `#box(width: 8pt, height: 8pt, stroke: 0.5pt, align(center)[#text(size: 6pt)[✓]])`
                     : `#box(width: 8pt, height: 8pt, stroke: 0.5pt)`;
                 result = `${marker} ${box} ${content}`;
@@ -183,19 +197,21 @@ export function stringifyToTypst(node: any, baseDir: string, footnotes?: Map<str
         }
 
         case 'blockquote': {
+            const bqNode = node as unknown as Blockquote & { data?: MK4NodeData };
             // On extrait uniquement le texte des paragraphes de la citation
-            const text = (node.children || []).map((n: any) => {
+            const text = bqNode.children.map((n) => {
                 if (n.type === 'paragraph') {
-                    return (n.children || []).map((sub: any) => stringifyToTypst(sub, baseDir, footnotes)).join('');
+                    const pNode = n as unknown as Paragraph & { data?: MK4NodeData };
+                    return pNode.children.map((sub) => stringifyToTypst(sub as unknown as MK4NodeWithData, baseDir, footnotes)).join('');
                 }
-                return stringifyToTypst(n, baseDir, footnotes);
+                return stringifyToTypst(n as unknown as MK4NodeWithData, baseDir, footnotes);
             }).join('\n');
 
             const buildAdmonition = (title: string, fill: string, stroke: string) => {
                 return `#rect(fill: ${fill}, stroke: ${stroke}, radius: 4pt, width: 100%, inset: 10pt)[\n  *${title}*\n  ${text}\n]`;
             };
 
-            const type = ann.type ? ann.type.toLowerCase() : '';
+            const type = ann.type ? String(ann.type).toLowerCase() : '';
 
             if (type === 'note') {
                 result = buildAdmonition('Note', 'rgb("eef2ff")', 'rgb("3b82f6")');
@@ -212,11 +228,11 @@ export function stringifyToTypst(node: any, baseDir: string, footnotes?: Map<str
                 let quoteOptions = 'block: true';
                 const attributionParts: string[] = [];
                 if (ann.author) {
-                    attributionParts.push(ann.author);
+                    attributionParts.push(String(ann.author));
                 }
-                const link = ann.link || ann.source;
-                if (link) {
-                    attributionParts.push(`#link("${link}")[Source]`);
+                const linkVal = ann.link || ann.source;
+                if (linkVal) {
+                    attributionParts.push(`#link("${linkVal}")[Source]`);
                 }
                 if (attributionParts.length > 0) {
                     quoteOptions += `, attribution: [${attributionParts.join(' — ')}]`;
@@ -227,12 +243,13 @@ export function stringifyToTypst(node: any, baseDir: string, footnotes?: Map<str
         }
 
         case 'code': {
-            const lang = node.lang ? node.lang.toLowerCase() : '';
+            const codeNode = node as unknown as Code & { data?: MK4NodeData };
+            const lang = codeNode.lang ? codeNode.lang.toLowerCase() : '';
             const hasLines = ann.lines === 'true' || ann.lines === true;
             const hasHighlight = !!ann.highlight;
 
             // 1. Le bloc brut avec les sauts de ligne vitaux pour la coloration
-            let codeBlock = `\n\`\`\`${lang}\n${node.value}\n\`\`\`\n`;
+            let codeBlock = `\n\`\`\`${lang}\n${codeNode.value}\n\`\`\`\n`;
 
             // 2. Numérotation et Surlignage combinés
             if (hasLines || hasHighlight) {
@@ -301,10 +318,11 @@ export function stringifyToTypst(node: any, baseDir: string, footnotes?: Map<str
         }
 
         case 'table': {
+            const tableNode = node as unknown as Table & { data?: MK4NodeData };
             const hasCompact = ann.compact === 'true' || ann.compact === true;
 
             // 1. Alignement des colonnes
-            const aligns = (node.align || []).map((a: string | null) => {
+            const aligns = (tableNode.align || []).map((a: string | null) => {
                 if (a === 'center') { return 'center'; }
                 if (a === 'right') { return 'right'; }
                 return 'left';
@@ -314,11 +332,13 @@ export function stringifyToTypst(node: any, baseDir: string, footnotes?: Map<str
 
             // 2. Construction des cellules Typst
             const cells: string[] = [];
-            if (node.children) {
-                node.children.forEach((row: any) => {
-                    if (row.children) {
-                        row.children.forEach((cell: any) => {
-                            const cellContent = (cell.children || []).map((n: any) => stringifyToTypst(n, baseDir, footnotes)).join('');
+            if (tableNode.children) {
+                tableNode.children.forEach((row) => {
+                    const rowNode = row as unknown as { children?: Array<{ children?: unknown[] }> };
+                    if (rowNode.children) {
+                        rowNode.children.forEach((cell) => {
+                            const cellNode = cell as unknown as { children?: unknown[] };
+                            const cellContent = (cellNode.children || []).map((n) => stringifyToTypst(n as unknown as MK4NodeWithData, baseDir, footnotes)).join('');
                             cells.push(`[${cellContent}]`);
                         });
                     }
@@ -380,7 +400,8 @@ export function stringifyToTypst(node: any, baseDir: string, footnotes?: Map<str
         }
 
         case 'footnoteReference': {
-            const fnContent = footnotes?.get(node.identifier) || '?';
+            const fnNode = node as unknown as FootnoteReferenceNode;
+            const fnContent = footnotes?.get(fnNode.identifier) || '?';
             result = `#footnote[${fnContent}]`;
             break;
         }
