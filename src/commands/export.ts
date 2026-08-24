@@ -35,10 +35,12 @@ export function registerExportCommands(context: vscode.ExtensionContext): vscode
                     const typstCode = compileMarkdownToTypst(text, mdPath, context);
 
                     const baseDir = path.dirname(mdPath);
+                    const workspaceFolders = vscode.workspace.workspaceFolders;
+                    const rootPath = workspaceFolders ? workspaceFolders[0].uri.fsPath : baseDir;
                     const tempExportTypst = path.join(baseDir, '.mk4-export.typ');
                     fs.writeFileSync(tempExportTypst, typstCode, 'utf8');
 
-                    execFile('typst', ['compile', tempExportTypst, pdfPath], (error, _stdout, stderr) => {
+                    execFile('typst', ['compile', tempExportTypst, pdfPath, '--root', rootPath], (error, _stdout, stderr) => {
                         if (fs.existsSync(tempExportTypst)) {
                             fs.unlinkSync(tempExportTypst);
                         }
