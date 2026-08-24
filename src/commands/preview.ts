@@ -5,7 +5,6 @@ import { execFile, ChildProcess } from 'child_process';
 import { compileMarkdownToTypst } from '../parser';
 import { validateAnnotations, parseTypstErrors } from '../providers/diagnostics';
 import { getSvgHtml } from '../webviews/preview-html';
-import { getErrorHtml } from '../webviews/error-html';
 
 /**
  * Enregistre la commande `mk4.showPreview` et gère le cycle de vie de la webview Typst.
@@ -146,7 +145,7 @@ export function registerPreviewCommand(
                     }
                 );
             } catch (err: any) {
-                panel.webview.html = getErrorHtml('Erreur de Parsing', err.message);
+                panel.webview.postMessage({ type: 'showError', text: err.message });
                 const diag = new vscode.Diagnostic(
                     new vscode.Range(0, 0, 0, 0),
                     err.message,
