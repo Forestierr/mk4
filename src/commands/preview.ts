@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
-import { exec, ChildProcess } from 'child_process';
+import { execFile, ChildProcess } from 'child_process';
 import { compileMarkdownToTypst } from '../parser';
 import { validateAnnotations, parseTypstErrors } from '../providers/diagnostics';
 import { getSvgHtml } from '../webviews/preview-html';
@@ -86,8 +86,9 @@ export function registerPreviewCommand(
                     activeCompileProcess = null;
                 }
 
-                activeCompileProcess = exec(
-                    `typst compile "${tempTypstFile}" "${tempSvgPattern}" --root "${rootPath}"`,
+                activeCompileProcess = execFile(
+                    'typst',
+                    ['compile', tempTypstFile, tempSvgPattern, '--root', rootPath],
                     (error, _stdout, stderr) => {
                         activeCompileProcess = null;
 
@@ -127,8 +128,9 @@ export function registerPreviewCommand(
 
                         // Lancer typst eval pour la map de positions (scroll sync)
                         const evalExpr = `query(<mk4_loc>).map(el => (value: el.value, pos: el.location().position()))`;
-                        activeEvalProcess = exec(
-                            `typst eval "${evalExpr}" --in "${tempTypstFile}" --root "${rootPath}"`,
+                        activeEvalProcess = execFile(
+                            'typst',
+                            ['eval', evalExpr, '--in', tempTypstFile, '--root', rootPath],
                             (qErr, qStdout) => {
                                 activeEvalProcess = null;
 
