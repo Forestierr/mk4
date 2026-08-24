@@ -5,6 +5,16 @@ Tous les changements notables sur l'extension "mk4" seront documentés dans ce f
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/), 
 et ce projet adhère au [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.1](https://github.com/Forestierr/mk4/compare/v1.2.0...v1.2.1) (2026-08-24)
+
+
+### Bug Fixes
+
+* **commands:** replace exec with execFile to prevent shell injection ([6d8e68b](https://github.com/Forestierr/mk4/commit/6d8e68b7e95bd5c85cd3484fab8dc4ce27d7d5ad))
+* **export:** add --root flag to pdf export for correct image path resolution ([b18101c](https://github.com/Forestierr/mk4/commit/b18101ccc8ef440a4d3025881e3a6a1739d8672c))
+* **extension:** detect missing typst binary on activation and show install prompt ([8a99b14](https://github.com/Forestierr/mk4/commit/8a99b142329f306cf8f6596e84181e5ebfdeba9c))
+* **preview:** use postMessage for parse errors instead of replacing webview html ([a687d81](https://github.com/Forestierr/mk4/commit/a687d81c89c6d5727d90e650f6cd3240516c4dbb))
+
 ## [1.2.0](https://github.com/Forestierr/mk4/compare/v1.1.0...v1.2.0) (2026-07-30)
 
 
