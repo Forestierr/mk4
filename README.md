@@ -1,46 +1,261 @@
 # MK4 - Markdown to Typst
 
-MK4 est une extension VS Code conçue pour allier la simplicité de frappe du Markdown avec la puissance de rendu mathématique et typographique de **Typst**. Pensée pour la documentation technique, les rapports d'ingénierie et la prise de notes structurée.
+[![Visual Studio Marketplace](https://vsmarketplacebadges.dev/version-short/rob1forest.mk4.svg)](https://marketplace.visualstudio.com/items?itemName=rob1forest.mk4)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](LICENSE)
 
-## Fonctionnalités Principales
+> **Alliez la simplicité d'écriture du Markdown à l'excellence typographique de [Typst](https://typst.app/).**  
+> Rédigez vos rapports d'ingénierie, documentations techniques et articles scientifiques en Markdown standard tout en générant instantanément des PDF de qualité publication.
 
-- **Aperçu en Direct (Live Preview) :** Visualisez votre document rendu par Typst en temps réel (via SVG) directement dans un panneau VS Code.
-- **Annotations Typst (`:`) :** Étendez la syntaxe Markdown standard pour contrôler finement le rendu (alignement, taille, légendes, identifiants) sans polluer votre texte avec du code Typst.
-- **Autocomplétion Intelligente :** Tapez `:` en dessous d'un élément (titre, image, code) pour afficher les annotations compatibles.
-- **Mathématiques & Tableaux :** Support complet des formules LaTeX (`$x^2$`) et des tableaux GitHub Flavored Markdown, traduits nativement pour Typst.
-- **Thèmes Personnalisés :** Injectez vos propres templates Typst pour un design sur mesure.
-- **Exports Multiples :** Générez le rapport final en PDF, ou exportez le code source `.typ` généré.
+<!-- SCREENSHOT_HERO_START -->
+<!-- Remplacez le lien ci-dessous par votre GIF animé ou capture d'écran principale -->
+![Aperçu interactif de MK4 dans VS Code](https://raw.githubusercontent.com/Forestierr/mk4/main/assets/demo.gif)
+*Édition Markdown en direct à gauche, aperçu Typst vectoriel instantané avec synchronisation bidirectionnelle à droite.*
+<!-- SCREENSHOT_HERO_END -->
 
-## Comment ça marche ? (La magie des Annotations)
+## Pourquoi MK4 ?
 
-Ajoutez des attributs à vos éléments Markdown en utilisant le préfixe `:` juste en dessous (ou au-dessus pour le document) de ceux-ci. 
+Le Markdown classique est universel et rapide à écrire, mais s'avère limité dès qu'il s'agit de produire un PDF soigné (gestion des pages, en-têtes, légendes, figures). Typst offre un moteur typographique moderne et ultra-rapide, mais impose une syntaxe de programmation dédiée et s'éloigne de la portabilité du Markdown.
 
-Les **Clés Universelles** comme `:id mon_identifiant` et `:align center|left|right` peuvent être appliquées à presque tous les blocs.
+**MK4 propose une approche équilibrée :** conservez des fichiers Markdown lisibles et compatibles avec vos outils habituels (Git, Obsidian, générateurs statiques), tout en pilotant la puissance de Typst via des annotations légères (`:key value`).
 
-Aucune annotations n'est obligatoire pour le fonctionnement du rendu.
+### Tableau comparatif
 
-## Annotations disponibles
+| Critère | Markdown standard *(+ HTML/CSS)* | Typst natif | MK4 (Markdown + Typst) |
+| :--- | :--- | :--- | :--- |
+| **Lisibilité brute du source** | Élevée (texte brut simple) | Moyenne (syntaxe fonctionnelle) | **Élevée (Markdown standard)** |
+| **Qualité typographique du PDF** | Basique (rendu navigateur) | Excellente (moteur vectoriel) | **Excellente (moteur Typst natif)** |
+| **Contrôle de mise en page** | Limité ou via HTML/CSS complexe | Total mais verbeux | **Simple et sémantique via annotations** |
+| **Callouts & Blocs d'alerte** | Citations non stylisées | Fonctions `#rect()` manuelles | **Sémantique (`> texte` + `:type warning`)** |
+| **Blocs de code avancés** | Pas de surlignage natif | Configuration `#show raw` avancée | **En-tête, numérotation et surlignage ciblés** |
+| **Portabilité du document** | Universelle | Format propriétaire `.typ` | **Fichiers `.md` 100% exploitables partout** |
+| **Prise en main** | Immédiate | Apprentissage d'un langage | **Immédiate** |
 
-### Métadonnées du Document & Thèmes
+### Comparatif de syntaxe
 
-À placer tout en haut de votre fichier `document.md` :
+#### 1. Images : dimensionnement, légende et alignement
+
+<details open>
+<summary><b>Voir le comparatif de code</b></summary>
+
+<br>
+
+##### Markdown standard *(nécessite du HTML intrusif)*
+```html
+<figure align="center">
+  <img src="logo.png" width="50%" />
+  <figcaption>Logo MK4</figcaption>
+</figure>
+```
+
+##### Typst natif *(syntaxe programmatique)*
+```typst
+#align(center)[
+  #figure(
+    image("logo.png", width: 50%),
+    caption: [Logo MK4]
+  )
+]
+```
+
+##### MK4 *(Markdown naturel + annotations ciblées)*
+```markdown
+![Logo MK4](logo.png)
+:width 50%
+:align center
+:caption Logo MK4
+```
+
+> **Avantage MK4 :** Vous conservez la syntaxe standard d'image Markdown (`![alt](url)`) sans alourdir le document avec du balisage HTML.
+
+</details>
+
+---
+
+#### 2. Blocs d'avertissement (Callouts / Admonitions)
+
+<details open>
+<summary><b>Voir le comparatif de code</b></summary>
+
+<br>
+
+##### Markdown standard *(citation monochrome)*
+```markdown
+> **Attention**
+> 
+> Vérifiez l'alimentation de la carte avant le flashage.
+```
+
+##### Typst natif *(boîte personnalisée manuellement)*
+```typst
+#rect(
+  fill: rgb("fffbeb"),
+  stroke: rgb("f59e0b"),
+  radius: 4pt,
+  width: 100%,
+  inset: 10pt
+)[
+  *Attention*
+  Vérifiez l'alimentation de la carte avant le flashage.
+]
+```
+
+##### MK4 *(citation avec typage sémantique)*
+```markdown
+> Vérifiez l'alimentation de la carte avant le flashage.
+:type warning
+```
+
+> **Avantage MK4 :** Une simple citation Markdown est traduite en un encadré coloré professionnel (types : `note`, `info`, `tip`, `warning`, `error`).
+
+</details>
+
+---
+
+#### 3. Blocs de code : nom de fichier, numérotation et surlignage
+
+<details open>
+<summary><b>Voir le comparatif de code</b></summary>
+
+<br>
+
+##### Markdown standard *(bloc brut non configurable)*
+````markdown
+```rust
+fn main() {
+    println!("Hello Typst!");
+}
+```
+````
+
+##### Typst natif *(définition de grilles et règles de contexte)*
+````typst
+#rect(fill: luma(250), stroke: luma(200), radius: 4pt, width: 100%)[
+  #rect(fill: luma(230), width: 100%, inset: 6pt)[*main.rs*]
+  #show raw.where(block: true): it => grid(
+    columns: (auto, 1fr),
+    gutter: 1em,
+    ..it.lines.enumerate().map(...)
+  )
+  ```rust
+  fn main() {
+      println!("Hello Typst!");
+  }
+  ```
+]
+````
+
+##### MK4 *(bloc standard enrichi d'attributs)*
+````markdown
+```rust
+fn main() {
+    println!("Hello Typst!");
+}
+```
+:filename main.rs
+:lines true
+:highlight 2
+````
+
+> **Avantage MK4 :** Vous disposez d'un encadré avec en-tête de fichier, numérotation de lignes et surlignage précis sans écrire de script Typst.
+
+</details>
+
+## Fonctionnalités principales
+
+- **Aperçu en direct (Live Preview) :** Rendu SVG vectoriel instantané recalculé à chaque frappe avec mise à jour incrémentale du DOM.
+- **Synchronisation du défilement :** Le panneau de prévisualisation et l'éditeur restent parfaitement synchronisés dans les deux sens.
+- **Autocomplétion intelligente :** Saisie assistée des annotations dès la frappe du préfixe `:` sous un élément.
+- **Formules mathématiques :** Conversion native des équations inline (`$E=mc^2$`) et blocs (`$$\int_0^\infty f(x) dx$$`).
+- **Tableaux avancés :** Prise en charge des tableaux GFM avec alignement de colonnes, mode compact et légendes.
+- **Thèmes personnalisables :** Injection de gabarits Typst complets (`:theme ./rapport.typ`) pour définir marges, polices, en-têtes et pieds de page.
+- **Export multiple :** Génération directe du PDF final haute résolution ou du fichier source `.typ`.
+
+---
+
+<!-- SCREENSHOT_FEATURES_START -->
+<!-- Placeholders pour vos captures d'écran des fonctionnalités -->
+| Autocomplétion intelligente | Export PDF & Thèmes |
+| :---: | :---: |
+| ![Autocomplétion](https://raw.githubusercontent.com/Forestierr/mk4/main/assets/completion.png) | ![Rendu PDF](https://raw.githubusercontent.com/Forestierr/mk4/main/assets/pdf-export.png) |
+<!-- SCREENSHOT_FEATURES_END -->
+
+## Démarrage rapide
+
+### 1. Prérequis
+
+Le compilateur **Typst CLI** doit être installé et accessible dans votre variable d'environnement `PATH` :
+
+```bash
+# Cargo (Rust)
+cargo install --locked typst-cli
+
+# macOS (Homebrew)
+brew install typst
+
+# Windows (Winget / Scoop)
+winget install --id Typst.Typst
+# ou : scoop install typst
+
+# Linux (Arch / AUR)
+pacman -S typst
+```
+
+Vérifiez l'installation avec la commande : `typst --version`
+
+### 2. Installation de l'extension
+
+Installez **MK4** depuis le [Marketplace VS Code](https://marketplace.visualstudio.com/items?itemName=rob1forest.mk4) ou recherchez `MK4` dans le panneau Extensions (`Ctrl+Shift+X` ou `Cmd+Shift+X`).
+
+### 3. Commandes disponibles
+
+Ouvrez un fichier `.md` et utilisez les boutons d'action en haut à droite de l'éditeur :
+
+| Commande | ID de commande | Action |
+| :--- | :--- | :--- |
+| **Aperçu Typst** | `mk4.showPreview` | Ouvre le panneau de prévisualisation en direct |
+| **Aperçu Markdown** | `mk4.showMarkdownPreview` | Affiche l'aperçu HTML avec badges d'annotations |
+| **Exporter en Typst** | `mk4.exportTypst` | Génère et ouvre le fichier source `.typ` |
+| **Exporter en PDF** | `mk4.exportPdf` | Compile et enregistre le document final en PDF |
+
+---
+
+## Configuration
+
+Vous pouvez configurer les options globales de MK4 dans vos paramètres VS Code (`settings.json`) :
+
+```json
+{
+  // Thème par défaut appliqué si aucune annotation :theme n'est spécifiée
+  // Options disponibles : "default" | "modern" | "academic"
+  "mk4.typst.defaultTheme": "default",
+
+  // Chemin absolu vers un fichier de thème Typst personnalisé (.typ) global
+  // Si défini, ce thème écrase le thème par défaut pour tous vos documents
+  "mk4.typst.customThemePath": ""
+}
+```
+
+> **Ordre de priorité des thèmes :**
+> 1. Annotation `:theme ./mon_theme.typ` dans le document Markdown (priorité maximale).
+> 2. Paramètre `mk4.typst.customThemePath` dans les paramètres utilisateur / workspace.
+> 3. Thème par défaut défini par `mk4.typst.defaultTheme` (`default`, `modern`, `academic`).
+
+### Métadonnées du document
+
+À placer au tout début du fichier Markdown :
 
 ```markdown
 :theme ./template.typ
-:title Spécifications de l'Architecture
-:subtitle Système embarqué temps réel
+:title Spécifications Techniques
+:subtitle Architecture logicielle embarquée
 :author Robin Forestier
-:date Juillet 2026
+:date Août 2026
 :lang fr
 :numbering 1.1
 :toc true
 ```
 
-_Exemple : [document.md](example/basics/document.md)_
-
 ### Titres
-
-Contrôlez l'affichage de vos titres dans le document et la table des matières (TOC) :
 
 ```markdown
 # Architecture du système de détection
@@ -49,84 +264,73 @@ Contrôlez l'affichage de vos titres dans le document et la table des matières 
 :id sec_architecture
 ```
 
-_Exemple : [titre.md](example/basics/titre.md)_
+- `:short <texte>` : Titre abrégé pour la table des matières (TOC).
+- `:numbering false` : Masque le numéro de section pour ce titre.
+- `:id <nom>` : Définit un identifiant pour les références croisées (`@sec_architecture`).
 
-### Images & Figures
+### Images et figures
 
 ```markdown
-![Logo mk4](/public/logo.png)
-:width 50%
+![Schéma fonctionnel](./assets/schema.png)
+:width 75%
 :align center
-:caption Logo MK4
-:id fig_logo
+:caption Diagramme des flux de données
+:id fig_schema
 ```
 
-_Exemple : [image.md](example/basics/image.md)_
+### Blocs de code
 
-### Blocs de Code
-
-```markdown
-\`\`\`rust
+````markdown
+```rust
 fn main() {
     println!("Hello Typst!");
 }
-\`\`\`
+```
 :filename main.rs
 :lines true
 :highlight 2
-:caption Script principal
+:caption Point d'entrée du programme
 :align center
-```
+````
 
-_Exemple : [code.md](example/basics/code.md)_
+- `:filename <nom>` : Affiche un bandeau d'en-tête contenant le nom du fichier.
+- `:lines true` : Active la numérotation des lignes de code.
+- `:highlight <lignes>` : Surligne une sélection de lignes (ex: `2`, `1-3`, `2,5,8-10`).
 
 ### Tableaux
 
 ```markdown
-| Composant | Langage | Description |
-| :--- | :---: | ---: |
-| Serveur | Rust | Pipeline de traitement |
-| Hardware | VHDL | Contrôle bas niveau |
-:caption Matrice des technologies
+| Composant | Rôle | Statut |
+| :--- | :--- | :---: |
+| Microcontrôleur | Traitement temps réel | Opérationnel |
+| Émetteur RF | Transmission télémétrie | En test |
+:caption Matrice des composants matériels
 :compact true
 :align center
 ```
 
-_Exemple : [tableau.md](example/basics/tableau.md)_
-
-### Citations (Admonitions / Callouts)
-
-Transformez les citations classiques en blocs d'avertissement colorés :
+### Citations et avertissements
 
 ```markdown
-> Il est crucial de vérifier l'alimentation avant le flashage de la carte.
+> Pensez à vérifier la tension d'alimentation avant toute mise sous tension.
 :type warning
 ```
-_(Types supportés : note, info, tip, warning, error)_
 
-_Exemple : [citation.md](example/basics/citation.md)_
+> **Types supportés :** `note` (bleu), `info` (cyan), `tip` (vert), `warning` (orange), `error` (rouge). Les citations classiques acceptent également `:author <nom>` et `:link <url>`.
 
-### Actions Globales
-
-Insérez des commandes de mise en page n'importe où dans le texte :
+### Saut de page
 
 ```markdown
 :layout pagebreak
 ```
 
-_Exemple : [layout.md](example/basics/layout.md)_
+## Thèmes personnalisés
 
-### Theme
+MK4 intègre 3 thèmes par défaut (`default`, `modern`, `academic`) et permet d'injecter n'importe quel gabarit Typst sur-mesure via `:theme ./template.typ`.
 
-Utiliser un thème typst pour modifier le style du document.
+Consultez le [Guide complet de création de thèmes](docs/themes.md) pour apprendre à créer vos propres modèles d'entreprise ou académiques.
 
-```markdown
-:theme ./template.typ
-```
-
-_Exemple : [theme.md](example/theme/theme.md)_
-
-```Typst
+```typst
 #let conf(
   title: none,
   subtitle: none,
@@ -136,87 +340,43 @@ _Exemple : [theme.md](example/theme/theme.md)_
   toc: false,
   doc,
 ) = {
-  // Configuration globale de la page
+  // Configuration de la page
   set page(
     paper: "a4",
-    margin: (x: 2cm, y: 2.5cm),
+    margin: (x: 2.5cm, y: 3cm),
     header: align(right)[_ #title _],
-    numbering: "1 / 1"
+    footer: locate(loc => align(center)[#loc.page() / #counter(page).final(loc).at(0)])
   )
 
-  (...)
+  // En-tête de document
+  if title != none {
+    align(center)[
+      #text(20pt, weight: "bold")[#title] \
+      #if subtitle != none { text(13pt, fill: luma(100))[#subtitle] }
+    ]
+  }
 
-  // Affiche le reste du document
+  if toc { outline(depth: 3, indent: true) }
+
+  // Corps du document
   doc
 }
 ```
 
-_Exemple : [template.typ](example/theme/template.typ)_
-
-### Formatage inline
-
-Le formatage standard Markdown est traduit en Typst natif :
-
-| Markdown | Rendu | Typst |
-| --- | --- | --- |
-| `**gras**` | **gras** | `*gras*` |
-| `*italique*` | *italique* | `_italique_` |
-| `~~barré~~` | ~~barré~~ | `#strike[barré]` |
-| `` `code` `` | `code` | `` `code` `` |
-
-### Listes imbriquées
-
-Les listes simples, ordonnées et imbriquées sont supportées nativement :
-
-```markdown
-- Frontend
-  - React
-  - Vue
-    - Composition API
-    - Options API
-- Backend
-  - Node.js
-```
-
-_Exemple : [liste.md](example/basics/liste.md)_
-
-### Notes de bas de page
-
-Ajoutez des notes avec la syntaxe standard Markdown :
-
-```markdown
-Ceci est un texte avec une note[^1].
-
-[^1]: Contenu de la note de bas de page.
-```
-
-_Exemple : [footnote.md](example/basics/footnote.md)_
-
-### Références croisées
-
-Utilisez `:id` pour nommer un élément et `@id` pour le référencer :
-
-```markdown
-## Mon titre
-:id sec_intro
-
-Voir la @sec_intro pour plus de détails.
-```
-
-_Exemple : [reference.md](example/basics/reference.md)_
-
-## Commandes & Interface
-
-MK4 ajoute 4 boutons pratiques en haut à droite de l'éditeur lors de l'édition d'un fichier Markdown :
-1. 🔍 **Aperçu Typst :** Ouvre le panneau de rendu en direct.
-2. 📄 **Aperçu Markdown :** Affiche un rendu HTML léger avec vos annotations sous forme de badges visuels.
-3. 💾 **Exporter Typst :** Génère et ouvre le fichier `.typ` source.
-4. 🖨️ **Exporter PDF :** Compile et sauvegarde le document final en PDF.
-
-## Prérequis
-
-- **Typst CLI** doit être installé sur votre machine et accessible via la variable d'environnement `PATH` (tapez `typst --version` dans votre terminal pour vérifier).
-
 ## Gestion des fichiers temporaires
 
-L'extension crée des fichiers temporaires cachés (`.mk4-temp-*`) dans le dossier de votre projet pour permettre au moteur Typst de résoudre correctement les chemins de vos images locales. Ces fichiers sont **automatiquement nettoyés** à la fermeture de l'aperçu ou de VS Code.
+Afin d'assurer la résolution immédiate des chemins d'images locales et des polices, MK4 génère des fichiers temporaires discrets (`.mk4-temp-*`) dans le répertoire de travail.
+
+Ces fichiers sont **automatiquement purgés** à la fermeture de l'aperçu ou lors de la déconnexion de l'extension.
+
+## Feuille de route (Roadmap)
+
+Découvrez les prochaines fonctionnalités en cours de réflexion ou de développement (multi-fichiers, bibliographie, annotations de layout étendues) en consultant le fichier [ROADMAP.md](ROADMAP.md).
+
+## Contribution
+
+Les contributions sont les bienvenues. Consultez le fichier [CONTRIBUTING.md](CONTRIBUTING.md) pour obtenir des détails sur l'architecture et les instructions de développement local.
+
+## Licence
+
+Ce projet est distribué sous licence **MIT**. Consultez le fichier [LICENSE](LICENSE) pour plus de détails.
