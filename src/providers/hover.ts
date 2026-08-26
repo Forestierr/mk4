@@ -15,7 +15,10 @@ const ANNOTATION_DOCS: Record<string, { description: string; values?: string; ta
                    values: '`./chapitre1.md`  `./chapitres/intro.md`',                                                                                       targets: 'Document (n\'importe où dans le fichier)' },
     bibliography:{ description: 'Ajoute une section bibliographie générée à partir d\'un fichier BibTeX. Utilisez `@cle_citation` dans le texte pour citer.',
                    values: '`./references.bib`',                                                                                                              targets: 'Document' },
-    'bib-style': { description: 'Style de citation pour la bibliographie. Requiert `:bibliography`.',  values: '`ieee` `apa` `chicago` `mla` `vancouver`',    targets: 'Document' },
+    biblio:      { description: 'Alias de `:bibliography`. Ajoute une section bibliographie générée à partir d\'un fichier BibTeX (.bib). Utilisez `@cle_citation` dans le texte pour citer.',
+                   values: '`./references.bib`',                                                                                                              targets: 'Document' },
+    'bib-style': { description: 'Style de citation pour la bibliographie. Requiert `:bibliography` ou `:biblio`.',  values: '`ieee` `apa` `chicago` `mla` `vancouver`',    targets: 'Document' },
+    bibStyle:    { description: 'Alias de `:bib-style`. Style de citation pour la bibliographie.',      values: '`ieee` `apa` `chicago` `mla` `vancouver`',    targets: 'Document' },
     // Universel
     id:        { description: 'Définit une ancre pour les références croisées (`@mon_id`).',         values: 'Identifiant sans espaces (ex: `sec_intro`)',   targets: 'Universel' },
     align:     { description: 'Alignement horizontal du bloc.',                                      values: '`left` `center` `right`',                    targets: 'Universel' },

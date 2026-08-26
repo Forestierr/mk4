@@ -11,6 +11,7 @@ import { createHoverProvider } from './providers/hover';
 import { createDefinitionProvider, createReferenceProvider, createRenameProvider } from './providers/definition';
 import { MK4StatusBar, registerThemePickerCommand } from './providers/statusBar';
 import { createCodeLensProvider } from './providers/codelens';
+import { MK4CodeActionProvider } from './providers/codeAction';
 
 /** Sessions de preview actives (pour le nettoyage final). */
 const activeSessions: { dir: string; id: string }[] = [];
@@ -55,6 +56,7 @@ export function activate(context: vscode.ExtensionContext) {
     const renameDisposable         = createRenameProvider();
     const codeLensDisposable       = createCodeLensProvider();
     const themePickerDisposable    = registerThemePickerCommand();
+    const codeActionDisposable     = vscode.languages.registerCodeActionsProvider('markdown', new MK4CodeActionProvider(), { providedCodeActionKinds: MK4CodeActionProvider.providedCodeActionKinds });
 
     // ── Barre d'état ────────────────────────────────────────────────────────
     const statusBar = new MK4StatusBar();
@@ -84,6 +86,7 @@ export function activate(context: vscode.ExtensionContext) {
         renameDisposable,
         codeLensDisposable,
         themePickerDisposable,
+        codeActionDisposable,
         activeEditorSub,
         diagnosticCollection,
         { dispose: () => statusBar.dispose() }
