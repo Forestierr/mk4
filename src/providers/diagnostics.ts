@@ -38,59 +38,74 @@ export function validateAnnotations(text: string, document: vscode.TextDocument)
         if (!keyMatch) { continue; }
         const key = keyMatch[1];
 
-        // Remonter pour trouver l'élément parent
-        let contextLine = '';
-        let j = i - 1;
-        while (j >= 0) {
-            const prev = lines[j].trim();
-            if (prev === '' || prev.startsWith(':')) { j--; continue; }
-            contextLine = prev;
-            break;
+        // 1. Directives globales de document et de fichier (:include, :theme, :bibliography, :title...)
+        // Elles sont autorisées partout dans le document.
+        const isDocumentDirective = DOCUMENT_KEYS.has(key);
+
+        if (!isDocumentDirective) {
+            // Remonter pour trouver l'élément parent
+            let contextLine = '';
+            let j = i - 1;
+            while (j >= 0) {
+                const prev = lines[j].trim();
+                if (prev === '' || prev.startsWith(':')) { j--; continue; }
+                contextLine = prev;
+                break;
+            }
+
+            const ctx = detectContext(contextLine);
+
+            const validKeys = new Set(UNIVERSAL_KEYS);
+            if (CONTEXT_KEYS[ctx]) {
+                CONTEXT_KEYS[ctx].forEach(k => validKeys.add(k));
+            }
+
+            if (!validKeys.has(key)) {
+                const colonIdx = lines[i].indexOf(':');
+                const range = new vscode.Range(i, colonIdx, i, colonIdx + 1 + key.length);
+                const diag = new vscode.Diagnostic(
+                    range,
+                    `Annotation inconnue ":${key}" dans ce contexte`,
+                    vscode.DiagnosticSeverity.Warning
+                );
+                diag.source = 'MK4';
+                diagnostics.push(diag);
+                continue;
+            }
         }
 
-        const ctx = detectContext(contextLine);
+        // 2. Vérification de l'existence des fichiers pour :include, :theme, :bibliography
+        if (['include', 'theme', 'bibliography', 'biblio'].includes(key)) {
+            const valMatch = trimmed.match(/^:([a-zA-Z0-9_-]+)\s+(.+)$/);
+            if (valMatch && document?.uri?.fsPath) {
+                const rawVal = valMatch[2].trim().replace(/^['"]|['"]$/g, '');
+                const baseDir = path.dirname(document.uri.fsPath);
+                const targetPath = path.resolve(baseDir, rawVal);
+                const normalized = normalizeFsPath(targetPath);
+                const isOpen = vscode.workspace.textDocuments?.some(d => normalizeFsPath(d.uri.fsPath) === normalized);
 
-        const validKeys = new Set(UNIVERSAL_KEYS);
-        if (ctx === 'document') {
-            DOCUMENT_KEYS.forEach(k => validKeys.add(k));
-        } else if (CONTEXT_KEYS[ctx]) {
-            CONTEXT_KEYS[ctx].forEach(k => validKeys.add(k));
-        }
-
-        if (!validKeys.has(key)) {
-            const colonIdx = lines[i].indexOf(':');
-            const range = new vscode.Range(i, colonIdx, i, colonIdx + 1 + key.length);
-            const diag = new vscode.Diagnostic(
-                range,
-                `Annotation inconnue ":${key}" dans ce contexte`,
-                vscode.DiagnosticSeverity.Warning
-            );
-            diag.source = 'MK4';
-            diagnostics.push(diag);
-        } else {
-            // Vérification de l'existence des fichiers pour :include, :theme, :bibliography
-            if (['include', 'theme', 'bibliography', 'biblio'].includes(key)) {
-                const valMatch = trimmed.match(/^:([a-zA-Z0-9_-]+)\s+(.+)$/);
-                if (valMatch && document?.uri?.fsPath) {
-                    const rawVal = valMatch[2].trim().replace(/^['"]|['"]$/g, '');
-                    const baseDir = path.dirname(document.uri.fsPath);
-                    const targetPath = path.resolve(baseDir, rawVal);
-                    const normalized = normalizeFsPath(targetPath);
-                    const isOpen = vscode.workspace.textDocuments?.some(d => normalizeFsPath(d.uri.fsPath) === normalized);
-
-                    if (!isOpen && !fs.existsSync(targetPath)) {
-                        const valIdx = lines[i].indexOf(valMatch[2]);
-                        const range = new vscode.Range(i, valIdx, i, valIdx + valMatch[2].length);
-                        const label = key === 'include' ? 'inclus' : key === 'theme' ? 'de thème' : 'de bibliographie';
-                        const diag = new vscode.Diagnostic(
-                            range,
-                            `Fichier ${label} introuvable : "${rawVal}"`,
-                            vscode.DiagnosticSeverity.Warning
-                        );
-                        diag.source = 'MK4';
-                        diagnostics.push(diag);
-                    }
+                if (!isOpen && !fs.existsSync(targetPath)) {
+                    const valIdx = lines[i].indexOf(valMatch[2]);
+                    const range = new vscode.Range(i, valIdx, i, valIdx + valMatch[2].length);
+                    const label = key === 'include' ? 'inclus' : key === 'theme' ? 'de thème' : 'de bibliographie';
+                    const diag = new vscode.Diagnostic(
+                        range,
+                        `Fichier ${label} introuvable : "${rawVal}"`,
+                        vscode.DiagnosticSeverity.Warning
+                    );
+                    diag.source = 'MK4';
+                    diagnostics.push(diag);
                 }
+            } else if (!valMatch) {
+                const colonIdx = lines[i].indexOf(':');
+                const range = new vscode.Range(i, colonIdx, i, colonIdx + 1 + key.length);
+                const diag = new vscode.Diagnostic(
+                    range,
+                    `Chemin de fichier manquant pour ":${key}"`,
+                    vscode.DiagnosticSeverity.Warning
+                );
+                diag.source = 'MK4';
+                diagnostics.push(diag);
             }
         }
     }

@@ -147,6 +147,17 @@ describe('validateAnnotations', () => {
         expect(diags).toHaveLength(1);
         expect(diags[0].message).toContain('Fichier de thème introuvable');
     });
+
+    it('accepte :include n\'importe où dans le document même après du texte', () => {
+        const text = '# Titre\n\nDu texte de paragraphe.\n:include ./fichier_existant.md\n\nAutre texte.';
+        const mockDoc: any = { uri: { fsPath: '/test/doc.md' } };
+        // Le fichier n'existe pas donc on attend seulement le warning de fichier introuvable, PAS "annotation inconnue"
+        const diags = validateAnnotations(text, mockDoc);
+
+        expect(diags).toHaveLength(1);
+        expect(diags[0].message).toContain('Fichier inclus introuvable');
+        expect(diags[0].message).not.toContain('Annotation inconnue');
+    });
 });
 
 import { LineSourceMap } from '../parser/includes';

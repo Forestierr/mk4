@@ -92,6 +92,24 @@ export function registerPreviewCommand(
         // --- Dépendances suivies (fichiers inclus, thème, biblio) ---
         const activeDependencies = new Set<string>();
         let currentSourceMap: LineSourceMap | null = null;
+        const subFilesWithDiagnostics = new Set<string>();
+
+        const clearSubFileDiagnostics = () => {
+            for (const subNorm of subFilesWithDiagnostics) {
+                const openDoc = vscode.workspace.textDocuments.find(d => normalizeFsPath(d.uri.fsPath) === subNorm);
+                if (openDoc && normalizeFsPath(openDoc.uri.fsPath) !== normalizeFsPath(editor.document.uri.fsPath)) {
+                    const subWarnings = validateAnnotations(openDoc.getText(), openDoc);
+                    diagnosticCollection.set(openDoc.uri, subWarnings);
+                } else {
+                    for (const [uri] of diagnosticCollection) {
+                        if (normalizeFsPath(uri.fsPath) === subNorm) {
+                            diagnosticCollection.delete(uri);
+                        }
+                    }
+                }
+            }
+            subFilesWithDiagnostics.clear();
+        };
 
         // --- #2 : Référence au process actif pour pouvoir l'annuler ---
         let activeCompileProcess: ChildProcess | null = null;
@@ -150,6 +168,8 @@ export function registerPreviewCommand(
                             const shortError = error.message.split('\n')[0] || 'Erreur de compilation';
                             panel.webview.postMessage({ type: 'showError', text: shortError });
 
+                            clearSubFileDiagnostics();
+
                             const errors = parseTypstErrors(stderr || error.message, typstCode, sourceMap, editor.document.uri.fsPath);
                             const diagnostics: vscode.Diagnostic[] = errors.map(err => {
                                 const lineIdx = Math.max(0, Math.min(err.line - 1, editor.document.lineCount - 1));
@@ -165,6 +185,7 @@ export function registerPreviewCommand(
                             for (const err of errors) {
                                 if (err.sourceFile && normalizeFsPath(err.sourceFile) !== normalizeFsPath(editor.document.uri.fsPath)) {
                                     const subNorm = normalizeFsPath(err.sourceFile);
+                                    subFilesWithDiagnostics.add(subNorm);
                                     const openSub = vscode.workspace.textDocuments.find(d => normalizeFsPath(d.uri.fsPath) === subNorm);
                                     if (openSub) {
                                         const sLine = Math.max(0, Math.min((err.sourceLine || 1) - 1, openSub.lineCount - 1));
@@ -179,6 +200,7 @@ export function registerPreviewCommand(
                             return;
                         }
 
+                        clearSubFileDiagnostics();
                         diagnosticCollection.set(editor.document.uri, annotationWarnings);
 
                         // Lire les SVG générés
@@ -328,6 +350,7 @@ export function registerPreviewCommand(
             watcherChangeSub.dispose();
             watcherCreateSub.dispose();
             watcherDeleteSub.dispose();
+            clearSubFileDiagnostics();
             diagnosticCollection.delete(editor.document.uri);
 
             // Tuer les process en cours si la webview est fermée
