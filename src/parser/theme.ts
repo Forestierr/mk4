@@ -3,6 +3,40 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 
 /**
+ * Résout le chemin absolu du thème Typst à utiliser.
+ */
+export function resolveThemePath(
+    ann: Record<string, any>,
+    baseDir: string,
+    extensionContext?: vscode.ExtensionContext
+): { path: string; isBuiltin: boolean } {
+    const config = vscode.workspace.getConfiguration('mk4');
+    const defaultThemeName = config.get<string>('typst.defaultTheme') || 'default';
+    const settingsCustomThemePath = config.get<string>('typst.customThemePath');
+
+    if (ann.theme) {
+        // PRIORITÉ 1 : La balise :theme dans le fichier Markdown
+        return {
+            path: path.resolve(baseDir, String(ann.theme).trim().replace(/^['"]|['"]$/g, '')),
+            isBuiltin: false
+        };
+    } else if (settingsCustomThemePath && fs.existsSync(settingsCustomThemePath)) {
+        // PRIORITÉ 2 : Le chemin personnalisé dans les paramètres VS Code
+        return {
+            path: path.resolve(settingsCustomThemePath),
+            isBuiltin: false
+        };
+    } else {
+        // PRIORITÉ 3 : Le thème par défaut fourni avec l'extension
+        const extPath = extensionContext?.extensionPath || '';
+        return {
+            path: path.join(extPath, 'themes', `${defaultThemeName}.typ`),
+            isBuiltin: true
+        };
+    }
+}
+
+/**
  * Résout et charge le code source du thème Typst selon les priorités :
  *  1. :theme dans le Markdown
  *  2. Paramètre mk4.typst.customThemePath dans VS Code
@@ -11,23 +45,16 @@ import * as vscode from 'vscode';
 export function loadTheme(
     ann: Record<string, any>,
     baseDir: string,
-    extensionContext: vscode.ExtensionContext
+    extensionContext: vscode.ExtensionContext,
+    readFile?: (filePath: string) => string | undefined
 ): string {
-    const config = vscode.workspace.getConfiguration('mk4');
-    const defaultThemeName = config.get<string>('typst.defaultTheme') || 'default';
-    const settingsCustomThemePath = config.get<string>('typst.customThemePath');
+    const { path: finalThemePath } = resolveThemePath(ann, baseDir, extensionContext);
 
-    let finalThemePath = '';
-
-    if (ann.theme) {
-        // PRIORITÉ 1 : La balise :theme dans le fichier Markdown
-        finalThemePath = path.resolve(baseDir, ann.theme);
-    } else if (settingsCustomThemePath && fs.existsSync(settingsCustomThemePath)) {
-        // PRIORITÉ 2 : Le chemin personnalisé dans les paramètres VS Code
-        finalThemePath = settingsCustomThemePath;
-    } else {
-        // PRIORITÉ 3 : Le thème par défaut fourni avec l'extension
-        finalThemePath = path.join(extensionContext.extensionPath, 'themes', `${defaultThemeName}.typ`);
+    if (readFile) {
+        const content = readFile(finalThemePath);
+        if (content !== undefined) {
+            return content;
+        }
     }
 
     try {
@@ -69,10 +96,6 @@ export function assembleTypstDocument(
         const bibStyle = VALID_STYLES.has(rawStyle) ? rawStyle : 'ieee';
         bibliographySection = `\n#bibliography("${cleanBib}", style: "${bibStyle}")`;
     }
-
-    console.log('[MK4 assembleTypstDocument] Theme selected:', ann.theme || 'VS Code default');
-    console.log('[MK4 assembleTypstDocument] ann:', ann);
-    console.log('[MK4 assembleTypstDocument] bibliographySection:', JSON.stringify(bibliographySection));
 
     return `${themeCode}
 

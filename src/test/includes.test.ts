@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-import { resolveIncludes } from '../parser/includes';
+import { resolveIncludes, normalizeFsPath } from '../parser/includes';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers : création de fichiers temporaires dans os.tmpdir()
@@ -162,6 +162,65 @@ describe('resolveIncludes — gestion des erreurs', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Tests : Dépendances, lecture in-memory et rebasage d'images relatives
+// ─────────────────────────────────────────────────────────────────────────────
+
+import { rebaseRelativeAssetPaths } from '../parser/includes';
+
+describe('resolveIncludes — fonctionnalités avancées & réactivité', () => {
+    it('collecte correctement toutes les dépendances dans un Set', () => {
+        const dir = createTmpDir();
+        const chap1 = writeTmp('chap1.md', 'Chapitre 1', dir);
+        const chap2 = writeTmp('chap2.md', 'Chapitre 2', dir);
+        const main = writeTmp('main.md', ':include ./chap1.md\n:include ./chap2.md', dir);
+
+        const deps = new Set<string>();
+        resolveIncludes(fs.readFileSync(main, 'utf-8'), main, { dependencies: deps });
+
+        expect(deps.has(normalizeFsPath(chap1))).toBe(true);
+        expect(deps.has(normalizeFsPath(chap2))).toBe(true);
+        expect(deps.size).toBe(2);
+    });
+
+    it('utilise readFile pour injecter le contenu non-sauvegardé (in-memory)', () => {
+        const dir = createTmpDir();
+        const subFile = writeTmp('sub.md', 'Contenu disque', dir);
+        const main = writeTmp('main.md', ':include ./sub.md', dir);
+
+        const customReader = (filePath: string) => {
+            if (path.normalize(filePath) === path.normalize(subFile)) {
+                return 'Contenu mémoire en direct !';
+            }
+            return undefined;
+        };
+
+        const result = resolveIncludes(fs.readFileSync(main, 'utf-8'), main, { readFile: customReader });
+        expect(result).toContain('Contenu mémoire en direct !');
+        expect(result).not.toContain('Contenu disque');
+    });
+
+    it('rebase les chemins relatifs d\'images pour les sous-fichiers dans des sous-dossiers', () => {
+        const dir = createTmpDir();
+        const subDir = path.join(dir, 'chapitres');
+        fs.mkdirSync(subDir, { recursive: true });
+
+        const subFile = writeTmp('intro.md', '# Intro\n\n![Schema](./images/archi.png "Architecture")\n<img src="img/test.jpg" />', subDir);
+        const main = writeTmp('main.md', ':include ./chapitres/intro.md', dir);
+
+        const result = resolveIncludes(fs.readFileSync(main, 'utf-8'), main);
+        expect(result).toContain('![Schema](./chapitres/images/archi.png "Architecture")');
+        expect(result).toContain('src="./chapitres/img/test.jpg"');
+    });
+
+    it('ne modifie pas les URLs absolues ou web lors du rebasage', () => {
+        const text = '![Web](https://example.com/pic.png)\n![Data](data:image/png;base64,123)';
+        const rebased = rebaseRelativeAssetPaths(text, '/dir/chap', '/dir');
+        expect(rebased).toContain('https://example.com/pic.png');
+        expect(rebased).toContain('data:image/png;base64,123');
+    });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Tests : bibliographie dans assembleTypstDocument
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -202,5 +261,94 @@ describe('assembleTypstDocument — bibliographie', () => {
         const bodyPos = result.indexOf('= Corps');
         const bibPos = result.indexOf('#bibliography');
         expect(bibPos).toBeGreaterThan(bodyPos);
+    });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Tests : Intégration réelle avec le CLI Typst sur les exemples
+// ─────────────────────────────────────────────────────────────────────────────
+
+import { execFile } from 'child_process';
+import { promisify } from 'util';
+import { compileMarkdownToTypst } from '../parser';
+
+const execFileAsync = promisify(execFile);
+
+describe('Integration — Compilation Typst CLI réelle', () => {
+    it('compile example/multi-file/base.md avec succès via Typst', async () => {
+        const mdPath = path.resolve(__dirname, '../../example/multi-file/base.md');
+        if (!fs.existsSync(mdPath)) {
+            return;
+        }
+
+        const mockContext = {
+            asAbsolutePath: (p: string) => path.resolve(__dirname, '../..', p)
+        } as any;
+
+        const text = fs.readFileSync(mdPath, 'utf8');
+        const deps = new Set<string>();
+        const typstCode = compileMarkdownToTypst(text, mdPath, mockContext, { dependencies: deps });
+
+        expect(deps.size).toBeGreaterThanOrEqual(4);
+        expect(typstCode).toContain('Systèmes Multi-Agents');
+
+        const baseDir = path.dirname(mdPath);
+        const tempTyp = path.join(baseDir, '.test-multi.typ');
+        const tempSvg = path.join(baseDir, '.test-multi-{n}.svg');
+        fs.writeFileSync(tempTyp, typstCode, 'utf8');
+
+        try {
+            const rootPath = path.resolve(__dirname, '../..');
+            await execFileAsync('typst', ['compile', tempTyp, tempSvg, '--root', rootPath]);
+            const page1 = path.join(baseDir, '.test-multi-1.svg');
+            expect(fs.existsSync(page1)).toBe(true);
+        } finally {
+            if (fs.existsSync(tempTyp)) {
+                fs.unlinkSync(tempTyp);
+            }
+            for (const f of fs.readdirSync(baseDir)) {
+                if (f.startsWith('.test-multi-')) {
+                    fs.unlinkSync(path.join(baseDir, f));
+                }
+            }
+        }
+    });
+
+    it('compile example/bibliographie/bibliographie.md avec succès via Typst', async () => {
+        const mdPath = path.resolve(__dirname, '../../example/bibliographie/bibliographie.md');
+        if (!fs.existsSync(mdPath)) {
+            return;
+        }
+
+        const mockContext = {
+            asAbsolutePath: (p: string) => path.resolve(__dirname, '../..', p)
+        } as any;
+
+        const text = fs.readFileSync(mdPath, 'utf8');
+        const deps = new Set<string>();
+        const typstCode = compileMarkdownToTypst(text, mdPath, mockContext, { dependencies: deps });
+
+        expect(typstCode).toContain('#bibliography("./references.bib", style: "ieee")');
+
+        const baseDir = path.dirname(mdPath);
+        const tempTyp = path.join(baseDir, '.test-bib.typ');
+        const tempSvg = path.join(baseDir, '.test-bib-{n}.svg');
+        fs.writeFileSync(tempTyp, typstCode, 'utf8');
+
+        try {
+            const rootPath = path.resolve(__dirname, '../..');
+            await execFileAsync('typst', ['compile', tempTyp, tempSvg, '--root', rootPath]);
+            const page1 = path.join(baseDir, '.test-bib-1.svg');
+            expect(fs.existsSync(page1)).toBe(true);
+        } finally {
+            if (fs.existsSync(tempTyp)) {
+                fs.unlinkSync(tempTyp);
+            }
+            for (const f of fs.readdirSync(baseDir)) {
+                if (f.startsWith('.test-bib-')) {
+                    fs.unlinkSync(path.join(baseDir, f));
+                }
+            }
+        }
     });
 });
