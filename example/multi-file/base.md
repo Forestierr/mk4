@@ -1,18 +1,17 @@
-:title Example import multi fichiers 
+:title Rapport de Recherche : Systèmes Multi-Agents
+:subtitle Architecture, Coordination et Évaluation Expérimentale
 :author Robin Forestier
-:date 2026
+:date Août 2026
 :lang fr
 :numbering 1.1
 :toc true
 
-# Intoduction
+:include ./chapitres/01-introduction.md
 
-## Chapitre 1
+:include ./chapitres/02-etat-de-lart.md
 
-:include ./chapitre_1.md
+:include ./chapitres/03-architecture.md
 
-:include chapitre_1.md
+:include ./chapitres/04-resultats.md
 
-## Chapitre 2
-
-:include chapitre_2.md
+:include ./chapitres/05-conclusion.md
