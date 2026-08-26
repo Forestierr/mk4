@@ -3,14 +3,19 @@ import * as vscode from 'vscode';
 /** Documentation enrichie par clé d'annotation MK4. */
 const ANNOTATION_DOCS: Record<string, { description: string; values?: string; targets: string }> = {
     // Document
-    theme:     { description: 'Chemin vers un gabarit Typst externe à appliquer au document.',      values: '`./theme.typ`',                               targets: 'Document' },
-    title:     { description: 'Titre principal du document, affiché sur la page de garde.',          values: 'Texte libre',                                 targets: 'Document' },
-    subtitle:  { description: 'Sous-titre du document.',                                             values: 'Texte libre',                                 targets: 'Document' },
-    author:    { description: 'Auteur du document ou de la citation.',                               values: 'Texte libre',                                 targets: 'Document / Citation' },
-    date:      { description: 'Date du document.',                                                   values: 'Texte libre (ex: `Août 2026`)',                targets: 'Document' },
-    lang:      { description: 'Langue du document pour la gestion des césures Typst.',               values: '`fr` `en` `de` `es`',                         targets: 'Document' },
-    numbering: { description: 'Format de numérotation des titres.',                                  values: '`1.1` `1.a` `false`',                         targets: 'Document / Titre' },
-    toc:       { description: 'Génère automatiquement la table des matières.',                       values: '`true` `false`',                              targets: 'Document' },
+    theme:       { description: 'Chemin vers un gabarit Typst externe à appliquer au document.',      values: '`./theme.typ`',                               targets: 'Document' },
+    title:       { description: 'Titre principal du document, affiché sur la page de garde.',          values: 'Texte libre',                                 targets: 'Document' },
+    subtitle:    { description: 'Sous-titre du document.',                                             values: 'Texte libre',                                 targets: 'Document' },
+    author:      { description: 'Auteur du document ou de la citation.',                               values: 'Texte libre',                                 targets: 'Document / Citation' },
+    date:        { description: 'Date du document.',                                                   values: 'Texte libre (ex: `Août 2026`)',                targets: 'Document' },
+    lang:        { description: 'Langue du document pour la gestion des césures Typst.',               values: '`fr` `en` `de` `es`',                         targets: 'Document' },
+    numbering:   { description: 'Format de numérotation des titres.',                                  values: '`1.1` `1.a` `false`',                         targets: 'Document / Titre' },
+    toc:         { description: 'Génère automatiquement la table des matières.',                       values: '`true` `false`',                              targets: 'Document' },
+    include:     { description: 'Inclut le contenu d\'un sous-fichier Markdown à cet endroit du document. Les annotations de document (`:title`, `:theme`…) du sous-fichier sont ignorées. Résolution récursive.',
+                   values: '`./chapitre1.md`  `./chapitres/intro.md`',                                                                                       targets: 'Document (n\'importe où dans le fichier)' },
+    bibliography:{ description: 'Ajoute une section bibliographie générée à partir d\'un fichier BibTeX. Utilisez `@cle_citation` dans le texte pour citer.',
+                   values: '`./references.bib`',                                                                                                              targets: 'Document' },
+    'bib-style': { description: 'Style de citation pour la bibliographie. Requiert `:bibliography`.',  values: '`ieee` `apa` `chicago` `mla` `vancouver`',    targets: 'Document' },
     // Universel
     id:        { description: 'Définit une ancre pour les références croisées (`@mon_id`).',         values: 'Identifiant sans espaces (ex: `sec_intro`)',   targets: 'Universel' },
     align:     { description: 'Alignement horizontal du bloc.',                                      values: '`left` `center` `right`',                    targets: 'Universel' },

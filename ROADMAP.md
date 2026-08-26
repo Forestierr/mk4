@@ -6,15 +6,21 @@ Chaque élément est rattaché à son ticket GitHub pour suivre les discussions 
 
 ## Fonctionnalités documentaires & académiques
 
-- [ ] **[Support multi-fichiers](https://github.com/Forestierr/mk4/issues/20)** (`#20`)
-  - Permettre l'inclusion de sous-documents via une directive `:include ./chapitre1.md`.
+- [x] **[Support multi-fichiers](https://github.com/Forestierr/mk4/issues/20)** (`#20`)
+  - Inclusion de sous-documents via la directive `:include ./chapitre1.md`.
   - Résolution récursive des chemins relatifs et assemblage transparent avant compilation Typst.
+  - Les annotations de document (`:title`, `:theme`…) des sous-fichiers sont ignorées — seul le fichier racine les définit.
+  - Protection anti-boucle d'inclusion circulaire et bloc d'erreur visible en cas de fichier introuvable.
   - Idéal pour la rédaction de mémoires, thèses et rapports volumineux.
 
-- [ ] **[Gestion de la bibliographie](https://github.com/Forestierr/mk4/issues/21)** (`#21`)
+- [x] **[Gestion de la bibliographie](https://github.com/Forestierr/mk4/issues/21)** (`#21`)
   - Prise en charge des fichiers de références `.bib` via `:bibliography ./references.bib`.
-  - Support des citations dans le texte via la syntaxe Typst `@cle_citation` ou Markdown standard `[@cle]`.
-  - Choix du style de citation (`:bib-style ieee`, `apa`, `chicago`).
+  - Citations dans le texte via la syntaxe Typst `@cle_citation`.
+  - Choix du style de citation (`:bib-style ieee`, `apa`, `chicago`, `mla`, `vancouver`).
+
+- [ ] **[Surveillance des fichiers inclus (Watch mode)](https://github.com/Forestierr/mk4/issues/20)** (`#20`)
+  - Recompiler l'aperçu en direct automatiquement dès qu'un fichier référencé par `:include` est modifié.
+  - Suivi dynamique du graphe d'inclusion (ajout / suppression de `:include` à la volée).
 
 ## Mise en page & Typographie avancée
 

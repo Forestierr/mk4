@@ -1,4 +1,4 @@
-﻿import type { Node, Parent } from 'unist';
+import type { Node, Parent } from 'unist';
 import type {
     Root, Heading, Paragraph, Text, Strong, Emphasis,
     InlineCode, Image, Link, List, ListItem, Blockquote,
@@ -38,6 +38,10 @@ export interface TypstAnnotations {
     date?: string;
     lang?: string;
     toc?: string | boolean;
+    // Multi-fichiers & Bibliographie
+    include?: string;         // clé reconnue mais traitée en pré-processeur (non transmise à Typst)
+    bibliography?: string;    // chemin vers le fichier .bib
+    'bib-style'?: string;     // style de citation : ieee, apa, chicago, mla, vancouver
     [key: string]: string | boolean | number | undefined;
 }
 

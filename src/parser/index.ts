@@ -10,6 +10,7 @@ import remarkHtml from 'remark-html';
 import { remarkTypstAnnotations, remarkHtmlAnnotations } from './annotations';
 import { stringifyToTypst } from './stringifier';
 import { loadTheme, assembleTypstDocument } from './theme';
+import { resolveIncludes } from './includes';
 import type { MK4NodeWithData } from './types';
 
 /**
@@ -20,6 +21,9 @@ export function compileMarkdownToTypst(
     documentPath: string,
     extensionContext: vscode.ExtensionContext
 ): string {
+    // ── Étape 0 : résoudre les :include avant le parsing AST ──────────────
+    const resolvedText = resolveIncludes(markdownText, documentPath);
+
     const processor = unified()
         .use(remarkParse)
         .use(remarkGfm)
@@ -27,7 +31,7 @@ export function compileMarkdownToTypst(
         .use(remarkFootnotes, { inlineNotes: true })
         .use(remarkTypstAnnotations);
 
-    const ast = processor.parse(markdownText);
+    const ast = processor.parse(resolvedText);
     const transformedAst = processor.runSync(ast);
     const baseDir = path.dirname(documentPath);
 

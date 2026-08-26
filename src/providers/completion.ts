@@ -67,6 +67,10 @@ export function createCompletionProvider(): vscode.Disposable {
                     addItem('numbering', 'numbering "1.1"', 'Format de numérotation des titres', vscode.CompletionItemKind.Property);
                     addItem('toc true', 'toc true', 'Afficher la table des matières', vscode.CompletionItemKind.Value, 'toc');
                     addItem('toc false', 'toc false', 'Masquer la table des matières', vscode.CompletionItemKind.Value, 'toc');
+                    addItem('bibliography', 'bibliography ', 'Chemin vers le fichier de références (.bib)', vscode.CompletionItemKind.Property);
+                    addItem('bib-style ieee', 'bib-style ieee', 'Style de citation IEEE', vscode.CompletionItemKind.Enum, 'bib-style');
+                    addItem('bib-style apa', 'bib-style apa', 'Style de citation APA', vscode.CompletionItemKind.Enum, 'bib-style');
+                    addItem('bib-style chicago', 'bib-style chicago', 'Style de citation Chicago', vscode.CompletionItemKind.Enum, 'bib-style');
                 }
 
                 // --- CLÉS UNIVERSELLES ---
@@ -111,6 +115,7 @@ export function createCompletionProvider(): vscode.Disposable {
 
                 // --- ACTIONS GLOBALES ---
                 addItem('layout pagebreak', 'layout pagebreak', 'Saut de page', vscode.CompletionItemKind.Keyword, 'layout');
+                addItem('include', 'include ', 'Inclure un sous-fichier Markdown', vscode.CompletionItemKind.File);
 
                 return completions;
             }

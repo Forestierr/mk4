@@ -45,7 +45,7 @@ export function loadTheme(
 }
 
 /**
- * Assemble le document Typst final : thème + show rule + corps.
+ * Assemble le document Typst final : thème + show rule + corps + bibliographie.
  */
 export function assembleTypstDocument(
     themeCode: string,
@@ -59,6 +59,15 @@ export function assembleTypstDocument(
     const numberingStyle = ann.numbering ? `"${ann.numbering}"` : 'none';
     const toc = ann.toc ? 'true' : 'false';
 
+    // ── Bibliographie ──────────────────────────────────────────────────────
+    let bibliographySection = '';
+    if (ann.bibliography) {
+        const VALID_STYLES = new Set(['ieee', 'apa', 'chicago', 'mla', 'vancouver']);
+        const rawStyle = String(ann['bib-style'] || 'ieee').toLowerCase();
+        const bibStyle = VALID_STYLES.has(rawStyle) ? rawStyle : 'ieee';
+        bibliographySection = `\n#bibliography("${ann.bibliography}", style: "${bibStyle}")`;
+    }
+
     return `${themeCode}
 
 #show: doc => conf(
@@ -71,6 +80,6 @@ export function assembleTypstDocument(
   doc
 )
 
-${bodyTypst}
+${bodyTypst}${bibliographySection}
 `;
 }
