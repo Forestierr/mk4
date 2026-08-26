@@ -3,8 +3,44 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { execFile, ChildProcess } from 'child_process';
 import { compileMarkdownToTypst } from '../parser';
+import { normalizeFsPath } from '../parser/includes';
 import { validateAnnotations, parseTypstErrors } from '../providers/diagnostics';
 import { getSvgHtml } from '../webviews/preview-html';
+
+/** Helper pour lire le contenu d'un document ouvert dans VS Code ou sur le disque. */
+function getDocumentOrDiskContent(filePath: string): string | undefined {
+    const targetNorm = normalizeFsPath(filePath);
+    const openDoc = vscode.workspace.textDocuments.find(
+        doc => normalizeFsPath(doc.uri.fsPath) === targetNorm
+    );
+    if (openDoc) {
+        return openDoc.getText();
+    }
+    if (fs.existsSync(filePath)) {
+        try {
+            return fs.readFileSync(filePath, 'utf-8');
+        } catch {
+            return undefined;
+        }
+    }
+    return undefined;
+}
+
+/** Calcule le chemin racine pour l'option --root de Typst */
+export function getTypstRootPath(docPath: string): string {
+    const baseDir = path.dirname(docPath);
+    const workspaceFolders = vscode.workspace.workspaceFolders;
+    if (workspaceFolders) {
+        for (const folder of workspaceFolders) {
+            const wsPath = folder.uri.fsPath;
+            const rel = path.relative(wsPath, docPath);
+            if (!rel.startsWith('..') && !path.isAbsolute(rel)) {
+                return wsPath;
+            }
+        }
+    }
+    return baseDir;
+}
 
 /**
  * Enregistre la commande `mk4.showPreview` et gère le cycle de vie de la webview Typst.
@@ -13,6 +49,7 @@ import { getSvgHtml } from '../webviews/preview-html';
  *  - #2  : Anti race-condition — le process typst précédent est annulé avant d'en démarrer un nouveau.
  *  - #16 : DOM incrémental — la webview est initialisée une fois ; les mises à jour
  *          se font via postMessage { type: 'update' } sans recharger toute la page.
+ *  - Dépendances : Mise à jour automatique en temps réel lors de la modification de fichiers :include ou thèmes.
  */
 export function registerPreviewCommand(
     context: vscode.ExtensionContext,
@@ -50,8 +87,10 @@ export function registerPreviewCommand(
         const tempSvgPattern = path.join(baseDir, `.mk4-temp-${sessionId}-{n}.svg`);
         const tempSvgBase = path.join(baseDir, `.mk4-temp-${sessionId}-`);
 
-        const workspaceFolders = vscode.workspace.workspaceFolders;
-        const rootPath = workspaceFolders ? workspaceFolders[0].uri.fsPath : baseDir;
+        const rootPath = getTypstRootPath(editor.document.uri.fsPath);
+
+        // --- Dépendances suivies (fichiers inclus, thème, biblio) ---
+        const activeDependencies = new Set<string>();
 
         // --- #2 : Référence au process actif pour pouvoir l'annuler ---
         let activeCompileProcess: ChildProcess | null = null;
@@ -62,7 +101,18 @@ export function registerPreviewCommand(
             const annotationWarnings = validateAnnotations(text, editor.document);
 
             try {
-                const typstCode = compileMarkdownToTypst(text, editor.document.uri.fsPath, context);
+                const dependencies = new Set<string>();
+                const typstCode = compileMarkdownToTypst(text, editor.document.uri.fsPath, context, {
+                    dependencies,
+                    readFile: getDocumentOrDiskContent,
+                });
+
+                // Mettre à jour la liste des dépendances actives
+                activeDependencies.clear();
+                for (const dep of dependencies) {
+                    activeDependencies.add(normalizeFsPath(dep));
+                }
+
                 fs.writeFileSync(tempTypstFile, typstCode, 'utf8');
 
                 // Nettoyage des SVG précédents (évite les pages fantômes)
@@ -92,6 +142,7 @@ export function registerPreviewCommand(
                         activeCompileProcess = null;
 
                         if (error) {
+                            console.error('[MK4] Erreur de compilation Typst :', stderr || error.message);
                             const shortError = error.message.split('\n')[0] || 'Erreur de compilation';
                             panel.webview.postMessage({ type: 'showError', text: shortError });
 
@@ -197,16 +248,40 @@ export function registerPreviewCommand(
         });
 
         let updateTimeout: ReturnType<typeof setTimeout> | null = null;
+
+        // Détection de frappe dans le document racine OU dans l'une de ses dépendances ouvertes
         const changeSub = vscode.workspace.onDidChangeTextDocument(e => {
-            if (e.document === editor.document) {
+            const changedPath = normalizeFsPath(e.document.uri.fsPath);
+            const rootPathNorm = normalizeFsPath(editor.document.uri.fsPath);
+
+            if (changedPath === rootPathNorm || activeDependencies.has(changedPath)) {
                 if (updateTimeout) { clearTimeout(updateTimeout); }
                 updateTimeout = setTimeout(() => updateWebview(), 300);
             }
         });
 
+        // Surveillance des modifications sur le système de fichiers (fichiers non ouverts dans l'éditeur)
+        const fileWatcher = vscode.workspace.createFileSystemWatcher('**/*');
+        const onFsChange = (uri: vscode.Uri) => {
+            const changedPath = normalizeFsPath(uri.fsPath);
+            const rootPathNorm = normalizeFsPath(editor.document.uri.fsPath);
+
+            if (changedPath === rootPathNorm || activeDependencies.has(changedPath)) {
+                if (updateTimeout) { clearTimeout(updateTimeout); }
+                updateTimeout = setTimeout(() => updateWebview(), 300);
+            }
+        };
+        const watcherChangeSub = fileWatcher.onDidChange(onFsChange);
+        const watcherCreateSub = fileWatcher.onDidCreate(onFsChange);
+        const watcherDeleteSub = fileWatcher.onDidDelete(onFsChange);
+
         panel.onDidDispose(() => {
             changeSub.dispose();
             scrollSub.dispose();
+            fileWatcher.dispose();
+            watcherChangeSub.dispose();
+            watcherCreateSub.dispose();
+            watcherDeleteSub.dispose();
             diagnosticCollection.delete(editor.document.uri);
 
             // Tuer les process en cours si la webview est fermée
