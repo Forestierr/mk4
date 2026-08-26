@@ -29,10 +29,10 @@ Chaque élément est rattaché à son ticket GitHub pour suivre les discussions 
 ## Mise en page & Typographie avancée
 
 - [ ] **[Annotations de layout étendues](https://github.com/Forestierr/mk4/issues/9)** (`#9`)
-  - Orientation de page à la volée : `:layout landscape` / `:layout portrait`.
-  - Gestion du multicolonne sur une section : `:layout columns 2`.
-  - Marges personnalisées par section ou globale : `:margin (x: 2cm, y: 2.5cm)`.
-  - En-têtes et pieds de page dynamiques configurables sans fichier de thème externe.
+  - **Orientation de page à la volée / globale :** Basculer facilement une section, un tableau large ou tout le document en mode paysage (`:layout landscape`) puis retour en portrait (`:layout portrait`).
+  - **Support du multicolonne :** Rédiger des sections complètes ou des articles en double/triple colonne (`:layout columns 2`) avec équilibrage dynamique du texte.
+  - **Marges personnalisées :** Configuration des marges par section ou globale (`:margin (x: 2cm, y: 2.5cm)`).
+  - **En-têtes et pieds de page dynamiques :** Définition d'en-têtes et pieds de page sans fichier de thème externe.
 
 - [ ] **Export multi-formats étendu**
   - Export direct en document Word (`.docx`) ou présentation diaporama (`Typst Touying` / Polylux).
@@ -45,6 +45,10 @@ Chaque élément est rattaché à son ticket GitHub pour suivre les discussions 
 
 - [x] **Attribution et remontée des erreurs sur `:include`**
   - Soulignement d'erreur Typst directement sur la ligne `:include` du document parent si un sous-fichier échoue à la compilation, avec nettoyage immédiat lors de la résolution.
+
+- [ ] **Actions rapides & Corrections automatiques (Code Actions & Quick Fixes 💡)**
+  - **Création automatique de sous-fichiers :** Lorsqu'une directive `:include ./chapitres/01-intro.md` pointe vers un fichier inexistant, proposer une action rapide pour générer automatiquement le fichier et ses répertoires parents avec un modèle de base.
+  - **Correction des fautes de frappe :** Suggestions en un clic pour réparer les annotations mal orthographiées (`:biblioo` ➔ `:biblio`, `:heigth` ➔ `:width`...).
 
 - [x] **Extraits de code intégrés (Snippets)**
   - Fournir des snippets VS Code (`mk4-code`, `mk4-image`, `mk4-callout`, `mk4-table`, `mk4-meta`) pour insérer rapidement des blocs annotés prêts à l'emploi avec champs interactifs.
@@ -77,8 +81,9 @@ Chaque élément est rattaché à son ticket GitHub pour suivre les discussions 
 - [x] **Optimisation du packaging & Bundler (`esbuild`)**
   - Réduction de 96% de la taille du package VSIX (de 4.7 Mo à ~188 Ko) et démarrage instantané de l'extension.
 
-- [ ] **[Intégration d'un compilateur Typst WebAssembly (WASM)](https://github.com/Forestierr/mk4/issues/8)** (`#8`)
-  - Étudier la possibilité d'embarquer Typst via WASM pour permettre un aperçu direct sans dépendance obligatoire au binaire CLI local.
+- [ ] **[Intégration d'un compilateur Typst WebAssembly (WASM - Zéro installation)](https://github.com/Forestierr/mk4/issues/8)** (`#8`)
+  - Embarquer le compilateur Typst en WebAssembly (ex: `@myriaddreamin/typst.ts`) pour permettre l'aperçu immédiat dès l'installation dans VS Code sans prérequis de binaire CLI local.
+  - Bascule automatique et transparente entre le moteur WASM embarqué et le binaire CLI local s'il est présent.
 
 - [ ] **Mise à niveau de l'écosystème Unified / Remark**
   - Migration vers les dernières versions ESM de `unified`, `remark-parse` et `remark-gfm` avec couverture de code complète (Vitest coverage).
