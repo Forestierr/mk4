@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
-import { normalizeFsPath } from '../parser/includes';
+import { normalizeFsPath, LineSourceMap, findRootIncludeLine } from '../parser/includes';
 
 export const DOCUMENT_KEYS = new Set(['title', 'subtitle', 'author', 'date', 'theme', 'lang', 'numbering', 'toc', 'bibliography', 'biblio', 'bib-style', 'bibStyle', 'include']);
 export const UNIVERSAL_KEYS = new Set(['id', 'align', 'layout']);
@@ -117,12 +117,26 @@ export function buildTypstToMdLineMap(typstCode: string): number[] {
     return map;
 }
 
+export interface TypstParsedError {
+    line: number;
+    message: string;
+    sourceFile?: string;
+    sourceLine?: number;
+    rootIncludeLine?: number;
+}
+
 /**
- * Analyse la sortie stderr de Typst et retourne des erreurs avec leurs lignes Markdown.
+ * Analyse la sortie stderr de Typst et retourne des erreurs avec leurs lignes Markdown
+ * et l'attribution au fichier d'origine (sous-fichier ou document racine).
  */
-export function parseTypstErrors(stderr: string, typstCode: string): { line: number; message: string }[] {
+export function parseTypstErrors(
+    stderr: string,
+    typstCode: string,
+    sourceMap?: LineSourceMap,
+    rootFilePath?: string
+): TypstParsedError[] {
     const lineMap = buildTypstToMdLineMap(typstCode);
-    const results: { line: number; message: string }[] = [];
+    const results: TypstParsedError[] = [];
 
     const stderrLines = stderr.split(/\r?\n/);
     let currentMessage = 'Erreur de compilation Typst';
@@ -136,8 +150,39 @@ export function parseTypstErrors(stderr: string, typstCode: string): { line: num
         const refMatch = stderrLine.match(/\.typ:(\d+):(\d+)/);
         if (refMatch) {
             const typLine = parseInt(refMatch[1]) - 1;
-            const mdLine = (typLine >= 0 && typLine < lineMap.length) ? lineMap[typLine] : 1;
-            results.push({ line: mdLine, message: currentMessage });
+            const mergedMdLine = (typLine >= 0 && typLine < lineMap.length) ? lineMap[typLine] : 1;
+
+            if (sourceMap) {
+                const loc = sourceMap.get(mergedMdLine);
+                const sourceFile = loc.file;
+                const sourceLine = loc.line;
+
+                if (rootFilePath && sourceFile && normalizeFsPath(sourceFile) !== normalizeFsPath(rootFilePath)) {
+                    // L'erreur provient d'un sous-fichier inclus
+                    const rootIncLine = findRootIncludeLine(sourceMap.includes, sourceFile, rootFilePath);
+                    const effectiveLine = rootIncLine !== undefined ? rootIncLine : mergedMdLine;
+                    const fileName = path.basename(sourceFile);
+                    const formattedMsg = `Erreur dans "${fileName}" (ligne ${sourceLine}) : ${currentMessage}`;
+
+                    results.push({
+                        line: effectiveLine,
+                        message: formattedMsg,
+                        sourceFile,
+                        sourceLine,
+                        rootIncludeLine: rootIncLine,
+                    });
+                } else {
+                    // L'erreur provient du document racine
+                    results.push({
+                        line: sourceLine || mergedMdLine,
+                        message: currentMessage,
+                        sourceFile: sourceFile || rootFilePath,
+                        sourceLine: sourceLine || mergedMdLine,
+                    });
+                }
+            } else {
+                results.push({ line: mergedMdLine, message: currentMessage });
+            }
         }
     }
 

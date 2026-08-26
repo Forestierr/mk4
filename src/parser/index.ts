@@ -10,12 +10,15 @@ import remarkHtml from 'remark-html';
 import { remarkTypstAnnotations, remarkHtmlAnnotations } from './annotations';
 import { stringifyToTypst } from './stringifier';
 import { loadTheme, resolveThemePath, assembleTypstDocument } from './theme';
-import { resolveIncludes, normalizeFsPath } from './includes';
+import { resolveIncludes, normalizeFsPath, LineSourceMap, findRootIncludeLine, SourceLocation, IncludeRecord } from './includes';
 import type { MK4NodeWithData } from './types';
+
+export { LineSourceMap, findRootIncludeLine, SourceLocation, IncludeRecord };
 
 export interface CompileOptions {
     dependencies?: Set<string>;
     readFile?: (filePath: string) => string | undefined;
+    sourceMap?: LineSourceMap;
 }
 
 /**
@@ -31,6 +34,7 @@ export function compileMarkdownToTypst(
     const resolvedText = resolveIncludes(markdownText, documentPath, {
         dependencies: options?.dependencies,
         readFile: options?.readFile,
+        sourceMap: options?.sourceMap,
     });
 
     const processor = unified()

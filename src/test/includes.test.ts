@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-import { resolveIncludes, normalizeFsPath } from '../parser/includes';
+import { resolveIncludes, normalizeFsPath, LineSourceMap, findRootIncludeLine } from '../parser/includes';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers : création de fichiers temporaires dans os.tmpdir()
@@ -217,6 +217,52 @@ describe('resolveIncludes — fonctionnalités avancées & réactivité', () => 
         const rebased = rebaseRelativeAssetPaths(text, '/dir/chap', '/dir');
         expect(rebased).toContain('https://example.com/pic.png');
         expect(rebased).toContain('data:image/png;base64,123');
+    });
+
+    it('génère un LineSourceMap précis pour les lignes fusionnées et fichiers inclus', () => {
+        const dir = createTmpDir();
+        const sub = writeTmp('sub.md', ':title Sub\n## Section 1\nParagraphe 1', dir);
+        const main = writeTmp('main.md', ':title Main\n# Titre Principal\n:include ./sub.md\n# Conclusion', dir);
+
+        const sourceMap = new LineSourceMap();
+        const result = resolveIncludes(fs.readFileSync(main, 'utf-8'), main, { sourceMap });
+
+        expect(result).toContain('## Section 1');
+        expect(result).toContain('# Conclusion');
+
+        // Merged lines:
+        // 1: :title Main (main.md:1)
+        // 2: # Titre Principal (main.md:2)
+        // 3: ## Section 1 (sub.md:2 because :title Sub was stripped)
+        // 4: Paragraphe 1 (sub.md:3)
+        // 5: # Conclusion (main.md:4)
+        expect(sourceMap.totalLines).toBe(5);
+        expect(sourceMap.get(1)).toEqual({ file: main, line: 1 });
+        expect(sourceMap.get(2)).toEqual({ file: main, line: 2 });
+        expect(sourceMap.get(3)).toEqual({ file: sub, line: 2 });
+        expect(sourceMap.get(4)).toEqual({ file: sub, line: 3 });
+        expect(sourceMap.get(5)).toEqual({ file: main, line: 4 });
+
+        expect(sourceMap.includes).toHaveLength(1);
+        expect(sourceMap.includes[0].parentFile).toBe(main);
+        expect(sourceMap.includes[0].parentLine).toBe(3);
+        expect(sourceMap.includes[0].childFile).toBe(sub);
+    });
+
+    it('retrouve la ligne :include racine pour des inclusions imbriquées via findRootIncludeLine', () => {
+        const dir = createTmpDir();
+        const sub2 = writeTmp('sub2.md', '### Deep content', dir);
+        const sub1 = writeTmp('sub1.md', '## Sub 1\n:include ./sub2.md', dir);
+        const main = writeTmp('main.md', '# Main\n:include ./sub1.md\nFin', dir);
+
+        const sourceMap = new LineSourceMap();
+        resolveIncludes(fs.readFileSync(main, 'utf-8'), main, { sourceMap });
+
+        const rootLineForSub1 = findRootIncludeLine(sourceMap.includes, sub1, main);
+        const rootLineForSub2 = findRootIncludeLine(sourceMap.includes, sub2, main);
+
+        expect(rootLineForSub1).toBe(2);
+        expect(rootLineForSub2).toBe(2);
     });
 });
 

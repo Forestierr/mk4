@@ -213,6 +213,44 @@ export function getSvgHtml(): string {
                     vscode.postMessage({ command: 'revealLine', line: Math.round(line) });
                 });
             });
+
+            // ======================================================
+            // Clic : Preview → Ouvrir le fichier source à la ligne
+            // ======================================================
+            container.addEventListener('click', (event) => {
+                // Ne pas intercepter les clics sur les liens hypertextes
+                if (event.target && (event.target.tagName === 'A' || event.target.closest('a'))) {
+                    return;
+                }
+
+                if (currentMap.length === 0) return;
+                if (absYCache.length === 0) rebuildAbsYCache();
+
+                const clickY = event.pageY;
+
+                let prevIdx = -1;
+                for (let i = 0; i < absYCache.length; i++) {
+                    if (absYCache[i] <= clickY) { prevIdx = i; } else { break; }
+                }
+                const prev = prevIdx >= 0 ? currentMap[prevIdx] : null;
+                const next = (prevIdx + 1 < currentMap.length) ? currentMap[prevIdx + 1] : null;
+                const prevY = prevIdx >= 0 ? absYCache[prevIdx] : null;
+                const nextY = (prevIdx + 1 < absYCache.length) ? absYCache[prevIdx + 1] : null;
+
+                let line;
+                if (prev && next && nextY > prevY) {
+                    const ratio = (clickY - prevY) / (nextY - prevY);
+                    line = prev.line + ratio * (next.line - prev.line);
+                } else if (prev) {
+                    line = prev.line;
+                } else if (next) {
+                    line = next.line;
+                } else {
+                    return;
+                }
+
+                vscode.postMessage({ command: 'openSource', line: Math.round(line) });
+            });
         </script>
     </body>
     </html>`;

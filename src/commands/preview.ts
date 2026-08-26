@@ -3,7 +3,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { execFile, ChildProcess } from 'child_process';
 import { compileMarkdownToTypst } from '../parser';
-import { normalizeFsPath } from '../parser/includes';
+import { normalizeFsPath, LineSourceMap } from '../parser/includes';
 import { validateAnnotations, parseTypstErrors } from '../providers/diagnostics';
 import { getSvgHtml } from '../webviews/preview-html';
 
@@ -91,6 +91,7 @@ export function registerPreviewCommand(
 
         // --- Dépendances suivies (fichiers inclus, thème, biblio) ---
         const activeDependencies = new Set<string>();
+        let currentSourceMap: LineSourceMap | null = null;
 
         // --- #2 : Référence au process actif pour pouvoir l'annuler ---
         let activeCompileProcess: ChildProcess | null = null;
@@ -102,10 +103,13 @@ export function registerPreviewCommand(
 
             try {
                 const dependencies = new Set<string>();
+                const sourceMap = new LineSourceMap();
                 const typstCode = compileMarkdownToTypst(text, editor.document.uri.fsPath, context, {
                     dependencies,
                     readFile: getDocumentOrDiskContent,
+                    sourceMap,
                 });
+                currentSourceMap = sourceMap;
 
                 // Mettre à jour la liste des dépendances actives
                 activeDependencies.clear();
@@ -146,7 +150,7 @@ export function registerPreviewCommand(
                             const shortError = error.message.split('\n')[0] || 'Erreur de compilation';
                             panel.webview.postMessage({ type: 'showError', text: shortError });
 
-                            const errors = parseTypstErrors(stderr || error.message, typstCode);
+                            const errors = parseTypstErrors(stderr || error.message, typstCode, sourceMap, editor.document.uri.fsPath);
                             const diagnostics: vscode.Diagnostic[] = errors.map(err => {
                                 const lineIdx = Math.max(0, Math.min(err.line - 1, editor.document.lineCount - 1));
                                 const lineText = editor.document.lineAt(lineIdx).text;
@@ -156,6 +160,22 @@ export function registerPreviewCommand(
                                 return diag;
                             });
                             diagnosticCollection.set(editor.document.uri, [...diagnostics, ...annotationWarnings]);
+
+                            // Attribuer aussi les erreurs directement sur les sous-fichiers ouverts
+                            for (const err of errors) {
+                                if (err.sourceFile && normalizeFsPath(err.sourceFile) !== normalizeFsPath(editor.document.uri.fsPath)) {
+                                    const subNorm = normalizeFsPath(err.sourceFile);
+                                    const openSub = vscode.workspace.textDocuments.find(d => normalizeFsPath(d.uri.fsPath) === subNorm);
+                                    if (openSub) {
+                                        const sLine = Math.max(0, Math.min((err.sourceLine || 1) - 1, openSub.lineCount - 1));
+                                        const sText = openSub.lineAt(sLine).text;
+                                        const sRange = new vscode.Range(sLine, 0, sLine, sText.length);
+                                        const sDiag = new vscode.Diagnostic(sRange, err.message, vscode.DiagnosticSeverity.Error);
+                                        sDiag.source = 'MK4';
+                                        diagnosticCollection.set(openSub.uri, [sDiag]);
+                                    }
+                                }
+                            }
                             return;
                         }
 
@@ -214,8 +234,34 @@ export function registerPreviewCommand(
         let webviewScrollTimeout: ReturnType<typeof setTimeout> | null = null;
 
         // Preview → Éditeur
-        panel.webview.onDidReceiveMessage(message => {
-            if (message.command === 'revealLine') {
+        panel.webview.onDidReceiveMessage(async message => {
+            if (message.command === 'openSource') {
+                const targetLine = message.line;
+                const loc = currentSourceMap ? currentSourceMap.get(targetLine) : { file: editor.document.uri.fsPath, line: targetLine };
+                const targetFilePath = loc?.file || editor.document.uri.fsPath;
+                const targetFileLine = loc?.line ? Math.max(0, loc.line - 1) : Math.max(0, targetLine - 1);
+
+                if (normalizeFsPath(targetFilePath) === normalizeFsPath(editor.document.uri.fsPath)) {
+                    const line = Math.min(targetFileLine, editor.document.lineCount - 1);
+                    const range = new vscode.Range(line, 0, line, 0);
+                    editor.revealRange(range, vscode.TextEditorRevealType.InCenter);
+                    editor.selection = new vscode.Selection(range.start, range.end);
+                } else {
+                    try {
+                        const doc = await vscode.workspace.openTextDocument(targetFilePath);
+                        const targetEditor = await vscode.window.showTextDocument(doc, {
+                            viewColumn: vscode.ViewColumn.One,
+                            preserveFocus: false,
+                        });
+                        const line = Math.min(targetFileLine, doc.lineCount - 1);
+                        const range = new vscode.Range(line, 0, line, 0);
+                        targetEditor.revealRange(range, vscode.TextEditorRevealType.InCenter);
+                        targetEditor.selection = new vscode.Selection(range.start, range.end);
+                    } catch (openErr) {
+                        console.error("Impossible d'ouvrir le fichier source :", targetFilePath, openErr);
+                    }
+                }
+            } else if (message.command === 'revealLine') {
                 isScrollingFromWebview = true;
                 if (webviewScrollTimeout) { clearTimeout(webviewScrollTimeout); }
                 webviewScrollTimeout = setTimeout(() => { isScrollingFromWebview = false; }, 150);
