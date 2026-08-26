@@ -5,6 +5,21 @@ Tous les changements notables sur l'extension "mk4" seront documentés dans ce f
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/), 
 et ce projet adhère au [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0](https://github.com/Forestierr/mk4/compare/v1.2.1...v1.3.0) (2026-08-26)
+
+
+### Features
+
+* **parser:** add :include multi-file support and :bibliography with :bib-style ([5e0b070](https://github.com/Forestierr/mk4/commit/5e0b0709eef221edf0b5fa6c5786b93dbcdf14bb))
+* **parser:** add table annotations and stringifier improvements ([dcb252d](https://github.com/Forestierr/mk4/commit/dcb252d9d6b5454ae58dbdf4d660346559a8832a))
+* **ux:** add code actions for typo quick fixes and enhance hover and completion ([745bc0e](https://github.com/Forestierr/mk4/commit/745bc0eb5f6c426fe83dfe3a0e29c6fc55267c12))
+* **ux:** add hover, definition, status bar, codelens, snippets and improved grammar ([62b38cd](https://github.com/Forestierr/mk4/commit/62b38cdd8705609a13eb920ff4a98a877f49d98c))
+
+
+### Bug Fixes
+
+* **parser:** fix bibliography placement after document body and support biblio aliases ([ea2bc52](https://github.com/Forestierr/mk4/commit/ea2bc52c21c824e816637c268f6f86b173f7f6f5))
+
 ## [1.2.1](https://github.com/Forestierr/mk4/compare/v1.2.0...v1.2.1) (2026-08-24)
 
 
