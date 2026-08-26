@@ -113,3 +113,39 @@ describe('parseTypstErrors', () => {
         expect(errors[1].message).toBe('erreur B');
     });
 });
+
+// ──────────────────────────────────────────────────────────────
+// validateAnnotations
+// ──────────────────────────────────────────────────────────────
+import { validateAnnotations } from '../providers/diagnostics';
+
+describe('validateAnnotations', () => {
+    it('détecte une annotation inconnue', () => {
+        const text = ':title Mon document\n:inconnu valeur';
+        const mockDoc: any = { uri: { fsPath: '/test/doc.md' } };
+        const diags = validateAnnotations(text, mockDoc);
+
+        expect(diags).toHaveLength(1);
+        expect(diags[0].message).toContain('Annotation inconnue ":inconnu"');
+    });
+
+    it('émet un warning si le fichier :include est introuvable', () => {
+        const text = ':title Mon document\n:include ./fichier_inexistant.md';
+        const mockDoc: any = { uri: { fsPath: '/test/doc.md' } };
+        const diags = validateAnnotations(text, mockDoc);
+
+        expect(diags).toHaveLength(1);
+        expect(diags[0].message).toContain('Fichier inclus introuvable');
+        expect(diags[0].message).toContain('fichier_inexistant.md');
+    });
+
+    it('émet un warning si le fichier :theme est introuvable', () => {
+        const text = ':theme ./theme_inexistant.typ\n# Contenu';
+        const mockDoc: any = { uri: { fsPath: '/test/doc.md' } };
+        const diags = validateAnnotations(text, mockDoc);
+
+        expect(diags).toHaveLength(1);
+        expect(diags[0].message).toContain('Fichier de thème introuvable');
+    });
+});
+

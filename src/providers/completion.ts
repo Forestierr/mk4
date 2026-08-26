@@ -1,14 +1,59 @@
 import * as vscode from 'vscode';
+import * as fs from 'fs';
+import * as path from 'path';
+
+/** Scan récursif pour trouver les fichiers relatifs par extension. */
+function getFilePathCompletions(document: vscode.TextDocument, extension: string): vscode.CompletionItem[] {
+    const baseDir = path.dirname(document.uri.fsPath);
+    const items: vscode.CompletionItem[] = [];
+
+    function scanDir(dir: string, relBase: string, depth: number = 0) {
+        if (depth > 4) { return; }
+        if (!fs.existsSync(dir)) { return; }
+        try {
+            const entries = fs.readdirSync(dir, { withFileTypes: true });
+            for (const entry of entries) {
+                if (entry.name.startsWith('.')) { continue; }
+                if (entry.name === 'node_modules' || entry.name === 'out') { continue; }
+
+                const relPath = relBase ? `${relBase}/${entry.name}` : `./${entry.name}`;
+                if (entry.isDirectory()) {
+                    scanDir(path.join(dir, entry.name), relPath, depth + 1);
+                } else if (entry.isFile() && entry.name.endsWith(extension)) {
+                    const item = new vscode.CompletionItem(relPath, vscode.CompletionItemKind.File);
+                    item.detail = `Fichier ${extension} relatif`;
+                    item.insertText = relPath;
+                    items.push(item);
+                }
+            }
+        } catch { /* ignore */ }
+    }
+
+    scanDir(baseDir, '', 0);
+    return items;
+}
 
 /**
- * Fournisseur d'autocomplétion pour les annotations MK4 (`:key value`).
+ * Fournisseur d'autocomplétion pour les annotations MK4 (`:key value`) et chemins de fichiers.
  */
 export function createCompletionProvider(): vscode.Disposable {
     return vscode.languages.registerCompletionItemProvider(
         'markdown',
         {
             provideCompletionItems(document: vscode.TextDocument, position: vscode.Position) {
-                const linePrefix = document.lineAt(position).text.substring(0, position.character);
+                const fullLine = document.lineAt(position).text;
+                const linePrefix = fullLine.substring(0, position.character);
+
+                // --- 1. Autocomplétion de chemins pour directives de fichiers ---
+                if (/^\s*:include\s+/.test(linePrefix)) {
+                    return getFilePathCompletions(document, '.md');
+                }
+                if (/^\s*:theme\s+/.test(linePrefix)) {
+                    return getFilePathCompletions(document, '.typ');
+                }
+                if (/^\s*:(bibliography|biblio)\s+/.test(linePrefix)) {
+                    return getFilePathCompletions(document, '.bib');
+                }
 
                 if (!linePrefix.trimStart().startsWith(':')) {
                     return undefined;
@@ -125,6 +170,6 @@ export function createCompletionProvider(): vscode.Disposable {
                 return completions;
             }
         },
-        ':'
+        ':', ' ', '/', '.'
     );
 }

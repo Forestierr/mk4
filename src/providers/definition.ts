@@ -1,10 +1,14 @@
 import * as vscode from 'vscode';
+import * as fs from 'fs';
+import * as path from 'path';
+import { normalizeFsPath } from '../parser/includes';
 
 /**
- * Fournisseur "Go to Definition" pour les références croisées MK4.
+ * Fournisseur "Go to Definition" pour les références croisées et directives de fichiers MK4.
  *
- * Permet de sauter (Ctrl+Clic / F12) depuis une citation `@mon_id`
- * vers la ligne déclarant l'ancre `:id mon_id` dans le même document.
+ * Permet de sauter (Ctrl+Clic / F12) :
+ *  - Depuis une citation `@mon_id` vers `:id mon_id` (dans le fichier ou ses inclusions).
+ *  - Depuis `:include ./chemin.md`, `:theme ./theme.typ`, `:bibliography ./refs.bib` vers le fichier cible.
  *
  * Supporte également :
  *  - "Find All References" (`Shift+F12`) — via `registerReferenceProvider`.
@@ -19,10 +23,15 @@ export function createDefinitionProvider(): vscode.Disposable {
             document: vscode.TextDocument,
             position: vscode.Position
         ): vscode.Location | undefined {
+            // 1. Saut vers le fichier sur :include, :theme, :bibliography
+            const fileDirective = getFilePathDirectiveAtPosition(document, position);
+            if (fileDirective) { return fileDirective; }
+
+            // 2. Saut vers l'ancre @mon_id (local ou inclus)
             const refId = getRefIdAtPosition(document, position);
             if (!refId) { return undefined; }
 
-            return findIdDeclaration(document, refId);
+            return findIdDeclarationInWorkspace(document, refId);
         }
     });
 }
@@ -134,6 +143,79 @@ export function createRenameProvider(): vscode.Disposable {
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
+
+/** Extrait les chemins des directives :include d'un texte. */
+export function extractIncludePaths(text: string, baseDir: string): string[] {
+    const paths: string[] = [];
+    const re = /^\s*:include\s+(.+)$/gm;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(text)) !== null) {
+        const clean = m[1].trim().replace(/^['"]|['"]$/g, '');
+        paths.push(path.resolve(baseDir, clean));
+    }
+    return paths;
+}
+
+/** Localise le fichier ciblé par une directive :include, :theme, :bibliography sous le curseur. */
+export function getFilePathDirectiveAtPosition(document: vscode.TextDocument, position: vscode.Position): vscode.Location | undefined {
+    const line = document.lineAt(position.line).text;
+    const match = line.match(/^\s*:(include|theme|bibliography|biblio)\s+(.+)$/);
+    if (!match) { return undefined; }
+
+    const rawPath = match[2].trim().replace(/^['"]|['"]$/g, '');
+    const baseDir = path.dirname(document.uri.fsPath);
+    const targetPath = path.resolve(baseDir, rawPath);
+
+    if (fs.existsSync(targetPath)) {
+        return new vscode.Location(vscode.Uri.file(targetPath), new vscode.Position(0, 0));
+    }
+    return undefined;
+}
+
+/** Recherche l'ancre :id dans le document courant et dans ses fichiers inclus. */
+export function findIdDeclarationInWorkspace(document: vscode.TextDocument, id: string): vscode.Location | undefined {
+    // 1. Chercher dans le document courant
+    const local = findIdDeclaration(document, id);
+    if (local) { return local; }
+
+    // 2. Parcourir les fichiers inclus
+    const baseDir = path.dirname(document.uri.fsPath);
+    const visited = new Set<string>([normalizeFsPath(document.uri.fsPath)]);
+    const queue = extractIncludePaths(document.getText(), baseDir);
+
+    while (queue.length > 0) {
+        const nextPath = queue.shift()!;
+        const normalized = normalizeFsPath(nextPath);
+        if (visited.has(normalized)) { continue; }
+        visited.add(normalized);
+
+        const openDoc = vscode.workspace.textDocuments.find(d => normalizeFsPath(d.uri.fsPath) === normalized);
+        let lines: string[] = [];
+        if (openDoc) {
+            const loc = findIdDeclaration(openDoc, id);
+            if (loc) { return loc; }
+            lines = openDoc.getText().split(/\r?\n/);
+        } else if (fs.existsSync(nextPath)) {
+            try {
+                const content = fs.readFileSync(nextPath, 'utf-8');
+                lines = content.split(/\r?\n/);
+                for (let i = 0; i < lines.length; i++) {
+                    const m = lines[i].match(new RegExp(`^\\s*:id\\s+(${escapeRegex(id)})\\s*$`));
+                    if (m) {
+                        const start = lines[i].indexOf(m[1]);
+                        const range = new vscode.Range(i, start, i, start + m[1].length);
+                        return new vscode.Location(vscode.Uri.file(nextPath), range);
+                    }
+                }
+            } catch { /* ignore */ }
+        }
+
+        const subIncludes = extractIncludePaths(lines.join('\n'), path.dirname(nextPath));
+        queue.push(...subIncludes);
+    }
+
+    return undefined;
+}
 
 /** Retourne le `id` sous un `@id` à la position donnée, ou undefined. */
 function getRefIdAtPosition(document: vscode.TextDocument, position: vscode.Position): string | undefined {

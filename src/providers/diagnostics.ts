@@ -1,4 +1,7 @@
 import * as vscode from 'vscode';
+import * as fs from 'fs';
+import * as path from 'path';
+import { normalizeFsPath } from '../parser/includes';
 
 export const DOCUMENT_KEYS = new Set(['title', 'subtitle', 'author', 'date', 'theme', 'lang', 'numbering', 'toc', 'bibliography', 'biblio', 'bib-style', 'bibStyle', 'include']);
 export const UNIVERSAL_KEYS = new Set(['id', 'align', 'layout']);
@@ -64,6 +67,31 @@ export function validateAnnotations(text: string, document: vscode.TextDocument)
             );
             diag.source = 'MK4';
             diagnostics.push(diag);
+        } else {
+            // Vérification de l'existence des fichiers pour :include, :theme, :bibliography
+            if (['include', 'theme', 'bibliography', 'biblio'].includes(key)) {
+                const valMatch = trimmed.match(/^:([a-zA-Z0-9_-]+)\s+(.+)$/);
+                if (valMatch && document?.uri?.fsPath) {
+                    const rawVal = valMatch[2].trim().replace(/^['"]|['"]$/g, '');
+                    const baseDir = path.dirname(document.uri.fsPath);
+                    const targetPath = path.resolve(baseDir, rawVal);
+                    const normalized = normalizeFsPath(targetPath);
+                    const isOpen = vscode.workspace.textDocuments?.some(d => normalizeFsPath(d.uri.fsPath) === normalized);
+
+                    if (!isOpen && !fs.existsSync(targetPath)) {
+                        const valIdx = lines[i].indexOf(valMatch[2]);
+                        const range = new vscode.Range(i, valIdx, i, valIdx + valMatch[2].length);
+                        const label = key === 'include' ? 'inclus' : key === 'theme' ? 'de thème' : 'de bibliographie';
+                        const diag = new vscode.Diagnostic(
+                            range,
+                            `Fichier ${label} introuvable : "${rawVal}"`,
+                            vscode.DiagnosticSeverity.Warning
+                        );
+                        diag.source = 'MK4';
+                        diagnostics.push(diag);
+                    }
+                }
+            }
         }
     }
 

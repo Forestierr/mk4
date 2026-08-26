@@ -1,7 +1,13 @@
 // Mock minimal du module 'vscode' pour les tests unitaires
 // Couvre les APIs utilisées par parser.ts, extension.ts et les providers.
 
+export const Uri = {
+    file: (fsPath: string) => ({ fsPath, toString: () => `file://${fsPath}` }),
+    parse: (url: string) => ({ fsPath: url, toString: () => url })
+};
+
 export const workspace = {
+    textDocuments: [] as any[],
     getConfiguration: (_section?: string) => ({
         get: <T>(key: string, defaultValue?: T): T | undefined => {
             if (key === 'typst.defaultTheme') {
