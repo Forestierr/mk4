@@ -29,27 +29,27 @@ Chaque élément est rattaché à son ticket GitHub pour suivre les discussions 
 
 ## Expérience utilisateur & Outils VS Code
 
-- [ ] **Extraits de code intégrés (Snippets)**
+- [x] **Extraits de code intégrés (Snippets)**
   - Fournir des snippets VS Code (`mk4-code`, `mk4-image`, `mk4-callout`, `mk4-table`, `mk4-meta`) pour insérer rapidement des blocs annotés prêts à l'emploi avec champs interactifs.
 
-- [ ] **Documentation au survol (Hover Provider)**
+- [x] **Documentation au survol (Hover Provider)**
   - Afficher une infobulle d'aide riche au survol d'une annotation (`:type warning`, `:highlight 2-5`, `:compact true`) décrivant la clé, les valeurs acceptées et un aperçu du rendu.
   - Afficher la cible d'une référence croisée au survol d'un identifiant `@sec_intro` ou `@fig_logo`.
 
-- [ ] **Navigation & Aller à la définition (Go to Definition `@id` → `:id`)**
+- [x] **Navigation & Aller à la définition (Go to Definition `@id` → `:id`)**
   - Permettre le saut direct (`Ctrl+Clic` / `Cmd+Clic`) depuis une citation `@mon_id` vers la ligne déclarant l'ancre `:id mon_id`.
   - Support de la recherche de toutes les références (*Find All References*) et du renommage sécurisé (`F2`).
 
-- [ ] **Barre d'état & Annulation de compilation (Status Bar & Cancel)**
+- [x] **Barre d'état & Annulation de compilation (Status Bar & Cancel)**
   - Afficher l'état du compilateur Typst et le thème actif dans la barre d'état inférieure de VS Code.
   - Sélecteur rapide de thème au clic sur la barre d'état.
   - Bouton d'annulation interactive pour les exports PDF et compilations longues (`cancellable: true` / `AbortController`).
 
-- [ ] **Coloration syntaxique avancée & Paramètres dédiés**
+- [x] **Coloration syntaxique avancée & Paramètres dédiés**
   - Amélioration de la grammaire TextMate pour distinguer les clés, valeurs, et références `@id`.
   - Ajout d'options de configuration dans `settings.json` pour personnaliser les couleurs et l'affichage des badges d'annotations.
 
-- [ ] **Actions rapides en en-tête (CodeLens Provider)**
+- [x] **Actions rapides en en-tête (CodeLens Provider)**
   - Afficher des boutons interactifs discrets au-dessus du document pour lancer en un clic l'aperçu Typst, l'export PDF ou changer de gabarit.
 
 - [ ] **[Validation et diagnostics stricts des annotations](https://github.com/Forestierr/mk4/issues/11)** (`#11`)
