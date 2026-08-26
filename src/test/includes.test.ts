@@ -66,6 +66,24 @@ describe('resolveIncludes — cas nominaux', () => {
         expect(result).toContain('Milieu');
         expect(result).toContain('Racine');
     });
+
+    it('gère les chemins entourés de guillemets', () => {
+        const dir = createTmpDir();
+        writeTmp('quoted.md', 'Contenu avec guillemets', dir);
+        const mainFile = writeTmp('main_q.md', ':include "./quoted.md"', dir);
+
+        const result = resolveIncludes(fs.readFileSync(mainFile, 'utf-8'), mainFile);
+        expect(result).toContain('Contenu avec guillemets');
+    });
+
+    it('gère les espaces en début de ligne devant :include', () => {
+        const dir = createTmpDir();
+        writeTmp('spaced.md', 'Contenu avec espaces', dir);
+        const mainFile = writeTmp('main_s.md', '  :include ./spaced.md', dir);
+
+        const result = resolveIncludes(fs.readFileSync(mainFile, 'utf-8'), mainFile);
+        expect(result).toContain('Contenu avec espaces');
+    });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -61,12 +61,18 @@ export function assembleTypstDocument(
 
     // ── Bibliographie ──────────────────────────────────────────────────────
     let bibliographySection = '';
-    if (ann.bibliography) {
+    const bibFile = ann.bibliography || ann.biblio;
+    if (bibFile && typeof bibFile === 'string' && bibFile.trim() !== '') {
+        const cleanBib = bibFile.trim().replace(/^['"]|['"]$/g, '').replace(/\\/g, '/');
         const VALID_STYLES = new Set(['ieee', 'apa', 'chicago', 'mla', 'vancouver']);
-        const rawStyle = String(ann['bib-style'] || 'ieee').toLowerCase();
+        const rawStyle = String(ann['bib-style'] || ann['bibStyle'] || 'ieee').toLowerCase();
         const bibStyle = VALID_STYLES.has(rawStyle) ? rawStyle : 'ieee';
-        bibliographySection = `\n#bibliography("${ann.bibliography}", style: "${bibStyle}")`;
+        bibliographySection = `\n#bibliography("${cleanBib}", style: "${bibStyle}")`;
     }
+
+    console.log('[MK4 assembleTypstDocument] Theme selected:', ann.theme || 'VS Code default');
+    console.log('[MK4 assembleTypstDocument] ann:', ann);
+    console.log('[MK4 assembleTypstDocument] bibliographySection:', JSON.stringify(bibliographySection));
 
     return `${themeCode}
 
@@ -80,6 +86,9 @@ export function assembleTypstDocument(
   doc
 )
 
-${bodyTypst}${bibliographySection}
+${bodyTypst}
+${bibliographySection}
 `;
 }
+
+

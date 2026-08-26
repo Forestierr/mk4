@@ -1,6 +1,11 @@
 import visit from 'unist-util-visit';
 import type { MK4NodeData } from './types';
 
+const DOCUMENT_ONLY_KEYS = new Set([
+    'theme', 'title', 'subtitle', 'author', 'date',
+    'lang', 'toc', 'bibliography', 'biblio', 'bib-style', 'bibStyle',
+]);
+
 /**
  * Plugin remark : extrait les annotations `:key value` qui suivent un bloc
  * et les attache au nœud parent sous `node.data.typstAnnotations`.
@@ -29,10 +34,19 @@ export function remarkTypstAnnotations() {
                     }
                     if (trimmed.startsWith(':')) {
                         const spaceIdx = trimmed.indexOf(' ');
+                        let key = '';
+                        let value: string | boolean = true;
                         if (spaceIdx !== -1) {
-                            annotations[trimmed.substring(1, spaceIdx)] = trimmed.substring(spaceIdx + 1).trim();
+                            key = trimmed.substring(1, spaceIdx).trim();
+                            value = trimmed.substring(spaceIdx + 1).trim();
                         } else {
-                            annotations[trimmed.substring(1)] = true;
+                            key = trimmed.substring(1).trim();
+                        }
+                        if (key.endsWith(':')) {
+                            key = key.slice(0, -1);
+                        }
+                        if (key) {
+                            annotations[key] = value;
                         }
                         i--;
                     } else {
@@ -49,18 +63,37 @@ export function remarkTypstAnnotations() {
                     const isEntirelyAnnotations = node.children.length === 1 && cleanText === '';
 
                     if (isEntirelyAnnotations) {
-                        // On les donne au bloc du dessus (ex: un bloc de code juste avant)
-                        if (parent && index !== undefined && index > 0) {
-                            const prevNode = parent.children[index - 1] as { data?: MK4NodeData };
-                            prevNode.data = prevNode.data || {};
-                            prevNode.data.typstAnnotations = { ...(prevNode.data.typstAnnotations || {}), ...annotations };
+                        // Premier bloc du document : toutes les annotations vont à la racine
+                        if (parent && parent.type === 'root' && index === 0) {
+                            tree.data = tree.data || {};
+                            tree.data.typstAnnotations = { ...(tree.data.typstAnnotations || {}), ...annotations };
+                        } else {
+                            // Séparer les annotations strictement document des annotations de bloc
+                            const docAnnotations: Record<string, string | boolean> = {};
+                            const blockAnnotations: Record<string, string | boolean> = {};
+
+                            for (const [k, v] of Object.entries(annotations)) {
+                                if (DOCUMENT_ONLY_KEYS.has(k)) {
+                                    docAnnotations[k] = v;
+                                } else {
+                                    blockAnnotations[k] = v;
+                                }
+                            }
+
+                            // Les annotations strictement document vont à la racine de l'AST
+                            if (Object.keys(docAnnotations).length > 0) {
+                                tree.data = tree.data || {};
+                                tree.data.typstAnnotations = { ...(tree.data.typstAnnotations || {}), ...docAnnotations };
+                            }
+
+                            // On donne les annotations de bloc au bloc du dessus
+                            if (parent && index !== undefined && index > 0 && Object.keys(blockAnnotations).length > 0) {
+                                const prevNode = parent.children[index - 1] as { data?: MK4NodeData };
+                                prevNode.data = prevNode.data || {};
+                                prevNode.data.typstAnnotations = { ...(prevNode.data.typstAnnotations || {}), ...blockAnnotations };
+                            }
                         }
-                        // Premier bloc, annotation du document
-                        else if (parent && parent.type === 'root' && index === 0) {
-                            const parentTyped = parent as { data?: MK4NodeData; type: string };
-                            parentTyped.data = parentTyped.data || {};
-                            parentTyped.data.typstAnnotations = { ...(parentTyped.data.typstAnnotations || {}), ...annotations };
-                        }
+
                         // On supprime ce paragraphe vide
                         parent.children.splice(index, 1);
                         return index;
@@ -78,6 +111,52 @@ export function remarkTypstAnnotations() {
                 }
             }
         });
+
+        // Extraction des annotations collées directement sous un tableau (sans ligne vide)
+        visit(tree, 'table', (node: any) => {
+            if (!node.children || node.children.length === 0) {
+                return;
+            }
+            const annotations: Record<string, string | boolean> = {};
+            while (node.children.length > 0) {
+                const lastRow = node.children[node.children.length - 1];
+                if (lastRow.type === 'tableRow' && lastRow.children) {
+                    let allAnnotations = true;
+                    const rowAnns: Record<string, string | boolean> = {};
+                    for (const cell of lastRow.children) {
+                        if (cell.type === 'tableCell' && cell.children && cell.children.length === 1 && cell.children[0].type === 'text') {
+                            const text = cell.children[0].value.trim();
+                            if (text.startsWith(':')) {
+                                const spaceIdx = text.indexOf(' ');
+                                if (spaceIdx !== -1) {
+                                    rowAnns[text.substring(1, spaceIdx)] = text.substring(spaceIdx + 1).trim();
+                                } else {
+                                    rowAnns[text.substring(1)] = true;
+                                }
+                            } else {
+                                allAnnotations = false;
+                                break;
+                            }
+                        } else {
+                            allAnnotations = false;
+                            break;
+                        }
+                    }
+                    if (allAnnotations && Object.keys(rowAnns).length > 0) {
+                        Object.assign(annotations, rowAnns);
+                        node.children.pop();
+                    } else {
+                        break;
+                    }
+                } else {
+                    break;
+                }
+            }
+            if (Object.keys(annotations).length > 0) {
+                node.data = node.data || {};
+                node.data.typstAnnotations = { ...(node.data.typstAnnotations || {}), ...annotations };
+            }
+        });
     };
 }
 
@@ -88,7 +167,7 @@ export function remarkTypstAnnotations() {
 export function remarkHtmlAnnotations() {
     return (tree: any) => {
         visit(tree, (node: any) => {
-            const typedNode = node as { data?: MK4NodeData; children?: unknown[] };
+            const typedNode = node as { data?: MK4NodeData; children?: unknown[]; type: string };
             const anns = typedNode.data?.typstAnnotations;
             if (anns && Object.keys(anns).length > 0) {
                 // Création des badges HTML pour chaque annotation
@@ -97,7 +176,9 @@ export function remarkHtmlAnnotations() {
                     .join(' ');
 
                 // On injecte ces badges à la fin de l'élément (titre, image, paragraphe...)
-                if (typedNode.children) {
+                // On évite les éléments stricts (list, table, tableRow, etc.)
+                const strictNodes = ['list', 'table', 'tableRow', 'math', 'code'];
+                if (typedNode.children && !strictNodes.includes(typedNode.type)) {
                     (typedNode.children as unknown[]).push({
                         type: 'html',
                         value: ` <span class="mk4-badges-container">${badgesHtml}</span>`

@@ -4,7 +4,7 @@ import * as path from 'path';
 /** Clés d'annotation considérées comme "document-level" — ignorées dans les sous-fichiers. */
 const DOCUMENT_LEVEL_KEYS = new Set([
     'theme', 'title', 'subtitle', 'author', 'date',
-    'lang', 'numbering', 'toc', 'bibliography', 'bib-style',
+    'lang', 'numbering', 'toc', 'bibliography', 'biblio', 'bib-style', 'bibStyle',
 ]);
 
 /**
@@ -64,24 +64,27 @@ export function resolveIncludes(
 
     const baseDir = path.dirname(filePath);
 
-    // Regex : ligne seule `:include ./chemin`
-    return text.replace(/^:include\s+(.+)$/gm, (_match, rawPath: string) => {
-        const includePath = path.resolve(baseDir, rawPath.trim());
+    // DEBUG: Dump resolved content to a temp file
+    const isRoot = depth === 0;
+
+    const resolved = text.replace(/^\s*:include\s+(.+)$/gm, (_match, rawPath: string) => {
+        const cleanPath = rawPath.trim().replace(/^['"]|['"]$/g, '');
+        const includePath = path.resolve(baseDir, cleanPath);
 
         // Protection anti-boucle
         if (visited.has(includePath)) {
-            return makeError(`Inclusion circulaire détectée : "${rawPath.trim()}"`);
+            return makeError(`Inclusion circulaire détectée : "${cleanPath}"`);
         }
 
         if (!fs.existsSync(includePath)) {
-            return makeError(`Fichier introuvable : "${rawPath.trim()}"`);
+            return makeError(`Fichier introuvable : "${cleanPath}"`);
         }
 
         let subText: string;
         try {
             subText = fs.readFileSync(includePath, 'utf-8');
         } catch (e) {
-            return makeError(`Impossible de lire : "${rawPath.trim()}"`);
+            return makeError(`Impossible de lire : "${cleanPath}"`);
         }
 
         // Ignorer les annotations de document du sous-fichier
@@ -92,6 +95,16 @@ export function resolveIncludes(
         newVisited.add(includePath);
         return resolveIncludes(subText, includePath, newVisited, depth + 1);
     });
+
+    if (isRoot) {
+        try {
+            fs.writeFileSync(path.join(baseDir, '.mk4-debug-resolve.txt'), resolved, 'utf-8');
+        } catch (e) {
+            // Ignore
+        }
+    }
+
+    return resolved;
 }
 
 /** Génère un bloc d'erreur visible dans le rendu Typst. */

@@ -37,6 +37,7 @@ export function compileMarkdownToTypst(
 
     const bodyTypst = stringifyToTypst(transformedAst as unknown as MK4NodeWithData, baseDir);
     const ann = (transformedAst.data as MK4NodeWithData['data'])?.typstAnnotations || {};
+    console.log('[MK4 compileMarkdownToTypst] Extracted annotations (ann):', ann);
     const themeCode = loadTheme(ann, baseDir, extensionContext);
 
     return assembleTypstDocument(themeCode, bodyTypst, ann);
@@ -45,7 +46,9 @@ export function compileMarkdownToTypst(
 /**
  * Compile un document Markdown en HTML (pour la preview Markdown).
  */
-export function compileMarkdownToHtml(markdownText: string): string {
+export function compileMarkdownToHtml(markdownText: string, documentPath?: string): string {
+    const resolvedText = documentPath ? resolveIncludes(markdownText, documentPath) : markdownText;
+
     const processor = unified()
         .use(remarkParse)
         .use(remarkGfm)
@@ -55,7 +58,7 @@ export function compileMarkdownToHtml(markdownText: string): string {
         .use(remarkHtmlAnnotations)   // 2. Les transforme en badges
         .use(remarkHtml, { sanitize: false }); // 3. Convertit le tout en HTML brut
 
-    const ast = processor.parse(markdownText);
+    const ast = processor.parse(resolvedText);
     const transformedAst = processor.runSync(ast);
     return processor.stringify(transformedAst as any) as string;
 }
