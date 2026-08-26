@@ -18,9 +18,13 @@ Chaque élément est rattaché à son ticket GitHub pour suivre les discussions 
   - Citations dans le texte via la syntaxe Typst `@cle_citation`.
   - Choix du style de citation (`:bib-style ieee`, `apa`, `chicago`, `mla`, `vancouver`).
 
-- [ ] **[Surveillance des fichiers inclus (Watch mode)](https://github.com/Forestierr/mk4/issues/20)** (`#20`)
-  - Recompiler l'aperçu en direct automatiquement dès qu'un fichier référencé par `:include` est modifié.
-  - Suivi dynamique du graphe d'inclusion (ajout / suppression de `:include` à la volée).
+- [x] **[Surveillance des fichiers inclus (Watch mode) & Live Update](https://github.com/Forestierr/mk4/issues/20)** (`#20`)
+  - Recompiler l'aperçu en direct automatiquement dès qu'un fichier référencé par `:include` est modifié (sur disque ou tampon non-sauvegardé en mémoire).
+  - Suivi dynamique du graphe de dépendances (ajout / suppression de `:include` à la volée).
+  - Cartographie ligne à ligne (`LineSourceMap`) pour relier chaque élément compilé à son fichier et sa ligne d'origine.
+
+- [x] **[Watch mode sur les thèmes externes](https://github.com/Forestierr/mk4/issues/22)** (`#22`)
+  - Détection automatique des modifications apportées aux fichiers `.typ` référencés dans `:theme` pour recompiler l'aperçu en direct.
 
 ## Mise en page & Typographie avancée
 
@@ -30,10 +34,17 @@ Chaque élément est rattaché à son ticket GitHub pour suivre les discussions 
   - Marges personnalisées par section ou globale : `:margin (x: 2cm, y: 2.5cm)`.
   - En-têtes et pieds de page dynamiques configurables sans fichier de thème externe.
 
-- [ ] **[Watch mode sur les thèmes externes](https://github.com/Forestierr/mk4/issues/22)** (`#22`)
-  - Détection automatique des modifications apportées aux fichiers `.typ` référencés dans `:theme` pour recompiler l'aperçu en direct.
+- [ ] **Export multi-formats étendu**
+  - Export direct en document Word (`.docx`) ou présentation diaporama (`Typst Touying` / Polylux).
+  - Export HTML autonome avec formules vectorielles embarquées.
 
 ## Expérience utilisateur & Outils VS Code
+
+- [x] **Navigation interactive Preview ➔ Source (Click-to-Source)**
+  - Cliquer sur une section dans la prévisualisation Typst ouvre directement le fichier source (principal ou sous-fichier inclus) et place le curseur à la ligne exacte.
+
+- [x] **Attribution et remontée des erreurs sur `:include`**
+  - Soulignement d'erreur Typst directement sur la ligne `:include` du document parent si un sous-fichier échoue à la compilation, avec nettoyage immédiat lors de la résolution.
 
 - [x] **Extraits de code intégrés (Snippets)**
   - Fournir des snippets VS Code (`mk4-code`, `mk4-image`, `mk4-callout`, `mk4-table`, `mk4-meta`) pour insérer rapidement des blocs annotés prêts à l'emploi avec champs interactifs.
@@ -43,13 +54,13 @@ Chaque élément est rattaché à son ticket GitHub pour suivre les discussions 
   - Afficher la cible d'une référence croisée au survol d'un identifiant `@sec_intro` ou `@fig_logo`.
 
 - [x] **Navigation & Aller à la définition (Go to Definition `@id` → `:id`)**
-  - Permettre le saut direct (`Ctrl+Clic` / `Cmd+Clic`) depuis une citation `@mon_id` vers la ligne déclarant l'ancre `:id mon_id`.
+  - Saut direct (`Ctrl+Clic` / `Cmd+Clic`) depuis une citation `@mon_id` vers la ligne déclarant l'ancre `:id mon_id` (y compris à travers plusieurs sous-fichiers).
   - Support de la recherche de toutes les références (*Find All References*) et du renommage sécurisé (`F2`).
 
 - [x] **Barre d'état & Annulation de compilation (Status Bar & Cancel)**
   - Afficher l'état du compilateur Typst et le thème actif dans la barre d'état inférieure de VS Code.
   - Sélecteur rapide de thème au clic sur la barre d'état.
-  - Bouton d'annulation interactive pour les exports PDF et compilations longues (`cancellable: true` / `AbortController`).
+  - Annulation automatique des compilations précédentes lors de la frappe rapide.
 
 - [x] **Coloration syntaxique avancée & Paramètres dédiés**
   - Amélioration de la grammaire TextMate pour distinguer les clés, valeurs, et références `@id`.
@@ -59,9 +70,12 @@ Chaque élément est rattaché à son ticket GitHub pour suivre les discussions 
   - Afficher des boutons interactifs discrets au-dessus du document pour lancer en un clic l'aperçu Typst, l'export PDF ou changer de gabarit.
 
 - [x] **[Validation et diagnostics stricts des annotations](https://github.com/Forestierr/mk4/issues/11)** (`#11`)
-  - Avertir en temps réel en cas de valeur invalide (ex: faute de frappe dans une clé) avec suggestions de correction automatique (*Quick Fix*).
+  - Avertir en temps réel en cas de valeur invalide (ex: faute de frappe dans une clé, fichier inclus introuvable) avec vérification de l'existence des chemins.
 
 ## Moteur & Infrastructure
+
+- [x] **Optimisation du packaging & Bundler (`esbuild`)**
+  - Réduction de 96% de la taille du package VSIX (de 4.7 Mo à ~188 Ko) et démarrage instantané de l'extension.
 
 - [ ] **[Intégration d'un compilateur Typst WebAssembly (WASM)](https://github.com/Forestierr/mk4/issues/8)** (`#8`)
   - Étudier la possibilité d'embarquer Typst via WASM pour permettre un aperçu direct sans dépendance obligatoire au binaire CLI local.
