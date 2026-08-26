@@ -96,6 +96,9 @@ export function stringifyToTypst(node: MK4NodeWithData, baseDir: string, footnot
             }
 
             let text = pNode.children.map((n) => stringifyToTypst(n as unknown as MK4NodeWithData, baseDir, footnotes)).join('');
+            if (ann.id) {
+                text += ` <${ann.id}>`;
+            }
             if (ann.align) {
                 text = `#align(${ann.align})[${text}]`;
             }
