@@ -113,3 +113,115 @@ describe('parseTypstErrors', () => {
         expect(errors[1].message).toBe('erreur B');
     });
 });
+
+// ──────────────────────────────────────────────────────────────
+// validateAnnotations
+// ──────────────────────────────────────────────────────────────
+import { validateAnnotations } from '../providers/diagnostics';
+
+describe('validateAnnotations', () => {
+    it('détecte une annotation inconnue', () => {
+        const text = ':title Mon document\n:inconnu valeur';
+        const mockDoc: any = { uri: { fsPath: '/test/doc.md' } };
+        const diags = validateAnnotations(text, mockDoc);
+
+        expect(diags).toHaveLength(1);
+        expect(diags[0].message).toContain('Annotation inconnue ":inconnu"');
+    });
+
+    it('émet un warning si le fichier :include est introuvable', () => {
+        const text = ':title Mon document\n:include ./fichier_inexistant.md';
+        const mockDoc: any = { uri: { fsPath: '/test/doc.md' } };
+        const diags = validateAnnotations(text, mockDoc);
+
+        expect(diags).toHaveLength(1);
+        expect(diags[0].message).toContain('Fichier inclus introuvable');
+        expect(diags[0].message).toContain('fichier_inexistant.md');
+    });
+
+    it('émet un warning si le fichier :theme est introuvable', () => {
+        const text = ':theme ./theme_inexistant.typ\n# Contenu';
+        const mockDoc: any = { uri: { fsPath: '/test/doc.md' } };
+        const diags = validateAnnotations(text, mockDoc);
+
+        expect(diags).toHaveLength(1);
+        expect(diags[0].message).toContain('Fichier de thème introuvable');
+    });
+
+    it('accepte :include n\'importe où dans le document même après du texte', () => {
+        const text = '# Titre\n\nDu texte de paragraphe.\n:include ./fichier_existant.md\n\nAutre texte.';
+        const mockDoc: any = { uri: { fsPath: '/test/doc.md' } };
+        // Le fichier n'existe pas donc on attend seulement le warning de fichier introuvable, PAS "annotation inconnue"
+        const diags = validateAnnotations(text, mockDoc);
+
+        expect(diags).toHaveLength(1);
+        expect(diags[0].message).toContain('Fichier inclus introuvable');
+        expect(diags[0].message).not.toContain('Annotation inconnue');
+    });
+});
+
+import { LineSourceMap } from '../parser/includes';
+
+describe('parseTypstErrors — attribution multi-fichiers avec LineSourceMap', () => {
+    it('attribue une erreur survenue dans un sous-fichier à la ligne :include du document parent', () => {
+        const typstCode = [
+            '#metadata("1") <mk4_loc>',
+            '// ligne 1',
+            '#metadata("3") <mk4_loc>',
+            '// ligne 3',
+        ].join('\n');
+
+        const sourceMap = new LineSourceMap();
+        sourceMap.addLine({ file: '/proj/main.md', line: 1 }); // merged line 1
+        sourceMap.addLine({ file: '/proj/main.md', line: 2 }); // merged line 2
+        sourceMap.addLine({ file: '/proj/chap1.md', line: 10 }); // merged line 3 (erreur ici dans chap1.md)
+
+        sourceMap.includes.push({
+            parentFile: '/proj/main.md',
+            parentLine: 5, // :include ./chap1.md était à la ligne 5 de main.md
+            childFile: '/proj/chap1.md',
+            mergedStartLine: 3,
+            mergedEndLine: 3,
+        });
+
+        const stderr = [
+            'error: label <wooldridge2009> does not exist in the document',
+            '  --> .mk4-temp.typ:3:1',
+        ].join('\n');
+
+        const errors = parseTypstErrors(stderr, typstCode, sourceMap, '/proj/main.md');
+        expect(errors).toHaveLength(1);
+        expect(errors[0].line).toBe(5); // Attribuée à la ligne 5 (:include)
+        expect(errors[0].message).toContain('Erreur dans "chap1.md" (ligne 10)');
+        expect(errors[0].message).toContain('label <wooldridge2009> does not exist');
+        expect(errors[0].sourceFile).toBe('/proj/chap1.md');
+        expect(errors[0].sourceLine).toBe(10);
+        expect(errors[0].rootIncludeLine).toBe(5);
+    });
+
+    it('attribue une erreur survenue dans le document racine à la ligne exacte du document racine', () => {
+        const typstCode = [
+            '#metadata("1") <mk4_loc>',
+            '// ligne 1',
+            '#metadata("2") <mk4_loc>',
+            '// ligne 2',
+        ].join('\n');
+
+        const sourceMap = new LineSourceMap();
+        sourceMap.addLine({ file: '/proj/main.md', line: 1 });
+        sourceMap.addLine({ file: '/proj/main.md', line: 8 });
+
+        const stderr = [
+            'error: unknown syntax',
+            '  --> .mk4-temp.typ:3:1',
+        ].join('\n');
+
+        const errors = parseTypstErrors(stderr, typstCode, sourceMap, '/proj/main.md');
+        expect(errors).toHaveLength(1);
+        expect(errors[0].line).toBe(8);
+        expect(errors[0].message).toBe('unknown syntax');
+        expect(errors[0].sourceFile).toBe('/proj/main.md');
+        expect(errors[0].sourceLine).toBe(8);
+    });
+});
+

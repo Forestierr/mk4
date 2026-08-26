@@ -59,6 +59,14 @@ export function remarkTypstAnnotations() {
                     const cleanText = lines.slice(0, i + 1).join('\n').trimEnd();
                     lastChild.value = cleanText;
 
+                    // Séparer les annotations strictement document pour toujours les propager à la racine
+                    for (const [k, v] of Object.entries(annotations)) {
+                        if (DOCUMENT_ONLY_KEYS.has(k)) {
+                            tree.data = tree.data || {};
+                            tree.data.typstAnnotations = { ...(tree.data.typstAnnotations || {}), [k]: v };
+                        }
+                    }
+
                     // Est-ce que ce paragraphe n'était QUE des annotations ?
                     const isEntirelyAnnotations = node.children.length === 1 && cleanText === '';
 
@@ -68,25 +76,14 @@ export function remarkTypstAnnotations() {
                             tree.data = tree.data || {};
                             tree.data.typstAnnotations = { ...(tree.data.typstAnnotations || {}), ...annotations };
                         } else {
-                            // Séparer les annotations strictement document des annotations de bloc
-                            const docAnnotations: Record<string, string | boolean> = {};
+                            // On donne les annotations de bloc au bloc du dessus
                             const blockAnnotations: Record<string, string | boolean> = {};
-
                             for (const [k, v] of Object.entries(annotations)) {
-                                if (DOCUMENT_ONLY_KEYS.has(k)) {
-                                    docAnnotations[k] = v;
-                                } else {
+                                if (!DOCUMENT_ONLY_KEYS.has(k)) {
                                     blockAnnotations[k] = v;
                                 }
                             }
 
-                            // Les annotations strictement document vont à la racine de l'AST
-                            if (Object.keys(docAnnotations).length > 0) {
-                                tree.data = tree.data || {};
-                                tree.data.typstAnnotations = { ...(tree.data.typstAnnotations || {}), ...docAnnotations };
-                            }
-
-                            // On donne les annotations de bloc au bloc du dessus
                             if (parent && index !== undefined && index > 0 && Object.keys(blockAnnotations).length > 0) {
                                 const prevNode = parent.children[index - 1] as { data?: MK4NodeData };
                                 prevNode.data = prevNode.data || {};

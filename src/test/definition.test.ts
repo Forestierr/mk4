@@ -163,3 +163,26 @@ describe('definition — isValidId', () => {
         expect(isValidId('sec@intro')).toBe(false);
     });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Tests : extractIncludePaths
+// ─────────────────────────────────────────────────────────────────────────────
+import { extractIncludePaths } from '../providers/definition';
+
+describe('definition — extractIncludePaths', () => {
+    it('extrait tous les chemins :include d\'un texte', () => {
+        const text = ':title Test\n:include ./chap1.md\n\nDu texte\n:include "chapitres/chap2.md"';
+        const baseDir = '/workspace';
+        const paths = extractIncludePaths(text, baseDir);
+
+        expect(paths).toHaveLength(2);
+        expect(paths[0]).toContain('chap1.md');
+        expect(paths[1]).toContain('chap2.md');
+    });
+
+    it('retourne [] si aucun :include', () => {
+        const text = '# Simple document sans include';
+        const paths = extractIncludePaths(text, '/workspace');
+        expect(paths).toEqual([]);
+    });
+});

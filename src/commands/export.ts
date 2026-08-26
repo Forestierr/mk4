@@ -3,6 +3,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { execFile } from 'child_process';
 import { compileMarkdownToTypst } from '../parser';
+import { getTypstRootPath } from './preview';
 
 /**
  * Enregistre les commandes `mk4.exportPdf` et `mk4.exportTypst`.
@@ -35,8 +36,7 @@ export function registerExportCommands(context: vscode.ExtensionContext): vscode
                     const typstCode = compileMarkdownToTypst(text, mdPath, context);
 
                     const baseDir = path.dirname(mdPath);
-                    const workspaceFolders = vscode.workspace.workspaceFolders;
-                    const rootPath = workspaceFolders ? workspaceFolders[0].uri.fsPath : baseDir;
+                    const rootPath = getTypstRootPath(mdPath);
                     const tempExportTypst = path.join(baseDir, '.mk4-export.typ');
                     fs.writeFileSync(tempExportTypst, typstCode, 'utf8');
 

@@ -3,8 +3,44 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { execFile, ChildProcess } from 'child_process';
 import { compileMarkdownToTypst } from '../parser';
+import { normalizeFsPath, LineSourceMap } from '../parser/includes';
 import { validateAnnotations, parseTypstErrors } from '../providers/diagnostics';
 import { getSvgHtml } from '../webviews/preview-html';
+
+/** Helper pour lire le contenu d'un document ouvert dans VS Code ou sur le disque. */
+function getDocumentOrDiskContent(filePath: string): string | undefined {
+    const targetNorm = normalizeFsPath(filePath);
+    const openDoc = vscode.workspace.textDocuments.find(
+        doc => normalizeFsPath(doc.uri.fsPath) === targetNorm
+    );
+    if (openDoc) {
+        return openDoc.getText();
+    }
+    if (fs.existsSync(filePath)) {
+        try {
+            return fs.readFileSync(filePath, 'utf-8');
+        } catch {
+            return undefined;
+        }
+    }
+    return undefined;
+}
+
+/** Calcule le chemin racine pour l'option --root de Typst */
+export function getTypstRootPath(docPath: string): string {
+    const baseDir = path.dirname(docPath);
+    const workspaceFolders = vscode.workspace.workspaceFolders;
+    if (workspaceFolders) {
+        for (const folder of workspaceFolders) {
+            const wsPath = folder.uri.fsPath;
+            const rel = path.relative(wsPath, docPath);
+            if (!rel.startsWith('..') && !path.isAbsolute(rel)) {
+                return wsPath;
+            }
+        }
+    }
+    return baseDir;
+}
 
 /**
  * Enregistre la commande `mk4.showPreview` et gère le cycle de vie de la webview Typst.
@@ -13,6 +49,7 @@ import { getSvgHtml } from '../webviews/preview-html';
  *  - #2  : Anti race-condition — le process typst précédent est annulé avant d'en démarrer un nouveau.
  *  - #16 : DOM incrémental — la webview est initialisée une fois ; les mises à jour
  *          se font via postMessage { type: 'update' } sans recharger toute la page.
+ *  - Dépendances : Mise à jour automatique en temps réel lors de la modification de fichiers :include ou thèmes.
  */
 export function registerPreviewCommand(
     context: vscode.ExtensionContext,
@@ -50,8 +87,29 @@ export function registerPreviewCommand(
         const tempSvgPattern = path.join(baseDir, `.mk4-temp-${sessionId}-{n}.svg`);
         const tempSvgBase = path.join(baseDir, `.mk4-temp-${sessionId}-`);
 
-        const workspaceFolders = vscode.workspace.workspaceFolders;
-        const rootPath = workspaceFolders ? workspaceFolders[0].uri.fsPath : baseDir;
+        const rootPath = getTypstRootPath(editor.document.uri.fsPath);
+
+        // --- Dépendances suivies (fichiers inclus, thème, biblio) ---
+        const activeDependencies = new Set<string>();
+        let currentSourceMap: LineSourceMap | null = null;
+        const subFilesWithDiagnostics = new Set<string>();
+
+        const clearSubFileDiagnostics = () => {
+            for (const subNorm of subFilesWithDiagnostics) {
+                const openDoc = vscode.workspace.textDocuments.find(d => normalizeFsPath(d.uri.fsPath) === subNorm);
+                if (openDoc && normalizeFsPath(openDoc.uri.fsPath) !== normalizeFsPath(editor.document.uri.fsPath)) {
+                    const subWarnings = validateAnnotations(openDoc.getText(), openDoc);
+                    diagnosticCollection.set(openDoc.uri, subWarnings);
+                } else {
+                    for (const [uri] of diagnosticCollection) {
+                        if (normalizeFsPath(uri.fsPath) === subNorm) {
+                            diagnosticCollection.delete(uri);
+                        }
+                    }
+                }
+            }
+            subFilesWithDiagnostics.clear();
+        };
 
         // --- #2 : Référence au process actif pour pouvoir l'annuler ---
         let activeCompileProcess: ChildProcess | null = null;
@@ -62,7 +120,21 @@ export function registerPreviewCommand(
             const annotationWarnings = validateAnnotations(text, editor.document);
 
             try {
-                const typstCode = compileMarkdownToTypst(text, editor.document.uri.fsPath, context);
+                const dependencies = new Set<string>();
+                const sourceMap = new LineSourceMap();
+                const typstCode = compileMarkdownToTypst(text, editor.document.uri.fsPath, context, {
+                    dependencies,
+                    readFile: getDocumentOrDiskContent,
+                    sourceMap,
+                });
+                currentSourceMap = sourceMap;
+
+                // Mettre à jour la liste des dépendances actives
+                activeDependencies.clear();
+                for (const dep of dependencies) {
+                    activeDependencies.add(normalizeFsPath(dep));
+                }
+
                 fs.writeFileSync(tempTypstFile, typstCode, 'utf8');
 
                 // Nettoyage des SVG précédents (évite les pages fantômes)
@@ -92,10 +164,13 @@ export function registerPreviewCommand(
                         activeCompileProcess = null;
 
                         if (error) {
+                            console.error('[MK4] Erreur de compilation Typst :', stderr || error.message);
                             const shortError = error.message.split('\n')[0] || 'Erreur de compilation';
                             panel.webview.postMessage({ type: 'showError', text: shortError });
 
-                            const errors = parseTypstErrors(stderr || error.message, typstCode);
+                            clearSubFileDiagnostics();
+
+                            const errors = parseTypstErrors(stderr || error.message, typstCode, sourceMap, editor.document.uri.fsPath);
                             const diagnostics: vscode.Diagnostic[] = errors.map(err => {
                                 const lineIdx = Math.max(0, Math.min(err.line - 1, editor.document.lineCount - 1));
                                 const lineText = editor.document.lineAt(lineIdx).text;
@@ -105,9 +180,27 @@ export function registerPreviewCommand(
                                 return diag;
                             });
                             diagnosticCollection.set(editor.document.uri, [...diagnostics, ...annotationWarnings]);
+
+                            // Attribuer aussi les erreurs directement sur les sous-fichiers ouverts
+                            for (const err of errors) {
+                                if (err.sourceFile && normalizeFsPath(err.sourceFile) !== normalizeFsPath(editor.document.uri.fsPath)) {
+                                    const subNorm = normalizeFsPath(err.sourceFile);
+                                    subFilesWithDiagnostics.add(subNorm);
+                                    const openSub = vscode.workspace.textDocuments.find(d => normalizeFsPath(d.uri.fsPath) === subNorm);
+                                    if (openSub) {
+                                        const sLine = Math.max(0, Math.min((err.sourceLine || 1) - 1, openSub.lineCount - 1));
+                                        const sText = openSub.lineAt(sLine).text;
+                                        const sRange = new vscode.Range(sLine, 0, sLine, sText.length);
+                                        const sDiag = new vscode.Diagnostic(sRange, err.message, vscode.DiagnosticSeverity.Error);
+                                        sDiag.source = 'MK4';
+                                        diagnosticCollection.set(openSub.uri, [sDiag]);
+                                    }
+                                }
+                            }
                             return;
                         }
 
+                        clearSubFileDiagnostics();
                         diagnosticCollection.set(editor.document.uri, annotationWarnings);
 
                         // Lire les SVG générés
@@ -163,8 +256,34 @@ export function registerPreviewCommand(
         let webviewScrollTimeout: ReturnType<typeof setTimeout> | null = null;
 
         // Preview → Éditeur
-        panel.webview.onDidReceiveMessage(message => {
-            if (message.command === 'revealLine') {
+        panel.webview.onDidReceiveMessage(async message => {
+            if (message.command === 'openSource') {
+                const targetLine = message.line;
+                const loc = currentSourceMap ? currentSourceMap.get(targetLine) : { file: editor.document.uri.fsPath, line: targetLine };
+                const targetFilePath = loc?.file || editor.document.uri.fsPath;
+                const targetFileLine = loc?.line ? Math.max(0, loc.line - 1) : Math.max(0, targetLine - 1);
+
+                if (normalizeFsPath(targetFilePath) === normalizeFsPath(editor.document.uri.fsPath)) {
+                    const line = Math.min(targetFileLine, editor.document.lineCount - 1);
+                    const range = new vscode.Range(line, 0, line, 0);
+                    editor.revealRange(range, vscode.TextEditorRevealType.InCenter);
+                    editor.selection = new vscode.Selection(range.start, range.end);
+                } else {
+                    try {
+                        const doc = await vscode.workspace.openTextDocument(targetFilePath);
+                        const targetEditor = await vscode.window.showTextDocument(doc, {
+                            viewColumn: vscode.ViewColumn.One,
+                            preserveFocus: false,
+                        });
+                        const line = Math.min(targetFileLine, doc.lineCount - 1);
+                        const range = new vscode.Range(line, 0, line, 0);
+                        targetEditor.revealRange(range, vscode.TextEditorRevealType.InCenter);
+                        targetEditor.selection = new vscode.Selection(range.start, range.end);
+                    } catch (openErr) {
+                        console.error("Impossible d'ouvrir le fichier source :", targetFilePath, openErr);
+                    }
+                }
+            } else if (message.command === 'revealLine') {
                 isScrollingFromWebview = true;
                 if (webviewScrollTimeout) { clearTimeout(webviewScrollTimeout); }
                 webviewScrollTimeout = setTimeout(() => { isScrollingFromWebview = false; }, 150);
@@ -197,16 +316,41 @@ export function registerPreviewCommand(
         });
 
         let updateTimeout: ReturnType<typeof setTimeout> | null = null;
+
+        // Détection de frappe dans le document racine OU dans l'une de ses dépendances ouvertes
         const changeSub = vscode.workspace.onDidChangeTextDocument(e => {
-            if (e.document === editor.document) {
+            const changedPath = normalizeFsPath(e.document.uri.fsPath);
+            const rootPathNorm = normalizeFsPath(editor.document.uri.fsPath);
+
+            if (changedPath === rootPathNorm || activeDependencies.has(changedPath)) {
                 if (updateTimeout) { clearTimeout(updateTimeout); }
                 updateTimeout = setTimeout(() => updateWebview(), 300);
             }
         });
 
+        // Surveillance des modifications sur le système de fichiers (fichiers non ouverts dans l'éditeur)
+        const fileWatcher = vscode.workspace.createFileSystemWatcher('**/*');
+        const onFsChange = (uri: vscode.Uri) => {
+            const changedPath = normalizeFsPath(uri.fsPath);
+            const rootPathNorm = normalizeFsPath(editor.document.uri.fsPath);
+
+            if (changedPath === rootPathNorm || activeDependencies.has(changedPath)) {
+                if (updateTimeout) { clearTimeout(updateTimeout); }
+                updateTimeout = setTimeout(() => updateWebview(), 300);
+            }
+        };
+        const watcherChangeSub = fileWatcher.onDidChange(onFsChange);
+        const watcherCreateSub = fileWatcher.onDidCreate(onFsChange);
+        const watcherDeleteSub = fileWatcher.onDidDelete(onFsChange);
+
         panel.onDidDispose(() => {
             changeSub.dispose();
             scrollSub.dispose();
+            fileWatcher.dispose();
+            watcherChangeSub.dispose();
+            watcherCreateSub.dispose();
+            watcherDeleteSub.dispose();
+            clearSubFileDiagnostics();
             diagnosticCollection.delete(editor.document.uri);
 
             // Tuer les process en cours si la webview est fermée

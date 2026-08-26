@@ -1,4 +1,7 @@
 import * as vscode from 'vscode';
+import * as fs from 'fs';
+import * as path from 'path';
+import { findIdDeclarationInWorkspace } from './definition';
 
 /** Documentation enrichie par clé d'annotation MK4. */
 const ANNOTATION_DOCS: Record<string, { description: string; values?: string; targets: string }> = {
@@ -41,22 +44,10 @@ const ANNOTATION_DOCS: Record<string, { description: string; values?: string; ta
 };
 
 /**
- * Construit la table clé→ligne de déclaration pour les ancres `:id` du document.
- */
-function buildIdMap(document: vscode.TextDocument): Map<string, number> {
-    const map = new Map<string, number>();
-    for (let i = 0; i < document.lineCount; i++) {
-        const m = document.lineAt(i).text.match(/^\s*:id\s+(\S+)/);
-        if (m) { map.set(m[1], i); }
-    }
-    return map;
-}
-
-/**
  * Fournisseur de documentation au survol pour les fichiers Markdown MK4.
  *
- * - Sur une annotation `:key` → infobulle avec description, valeurs acceptées, cible.
- * - Sur une référence `@id` → indique la ligne de déclaration de l'ancre (ou "introuvable").
+ * - Sur une annotation `:key` → infobulle avec description, valeurs acceptées, cible et prévisualisation de fichier.
+ * - Sur une référence `@id` → indique la ligne de déclaration de l'ancre (localement ou dans les inclusions).
  */
 export function createHoverProvider(): vscode.Disposable {
     return vscode.languages.registerHoverProvider('markdown', {
@@ -64,33 +55,44 @@ export function createHoverProvider(): vscode.Disposable {
             const line = document.lineAt(position.line).text;
 
             // ── 1. Survol d'une annotation `:key ...` ──
-            const annotationMatch = line.match(/^\s*(:)([a-zA-Z0-9_-]+)/);
+            const annotationMatch = line.match(/^\s*(:)([a-zA-Z0-9_-]+)(?:\s+(.*))?$/);
             if (annotationMatch) {
                 const colonStart = line.indexOf(':');
-                const keyStart   = colonStart + 1;
-                const keyEnd     = keyStart + annotationMatch[2].length;
+                const key = annotationMatch[2];
+                const keyEnd = colonStart + 1 + key.length;
 
-                if (position.character >= colonStart && position.character <= keyEnd) {
-                    const key  = annotationMatch[2];
-                    const info = ANNOTATION_DOCS[key];
-
-                    if (!info) { return undefined; }
-
+                const info = ANNOTATION_DOCS[key];
+                if (info) {
                     const md = new vscode.MarkdownString();
                     md.isTrusted = true;
                     md.supportHtml = false;
 
                     md.appendMarkdown(`**MK4** · \`:${key}\`\n\n`);
                     md.appendMarkdown(`${info.description}\n\n`);
+
+                    // Informations supplémentaires pour les fichiers (:include, :theme, :bibliography)
+                    if (['include', 'theme', 'bibliography', 'biblio'].includes(key) && annotationMatch[3]) {
+                        const rawTarget = annotationMatch[3].trim().replace(/^['"]|['"]$/g, '');
+                        const baseDir = document.uri.fsPath ? path.dirname(document.uri.fsPath) : '';
+                        const targetPath = path.resolve(baseDir, rawTarget);
+
+                        if (fs.existsSync(targetPath)) {
+                            md.appendMarkdown(`✅ **Fichier trouvé :** \`${rawTarget}\`\n\n`);
+                            try {
+                                const sample = fs.readFileSync(targetPath, 'utf-8').split(/\r?\n/).slice(0, 4).join('\n');
+                                md.appendMarkdown(`\`\`\`markdown\n${sample}\n...\n\`\`\`\n\n`);
+                            } catch { /* ignore */ }
+                        } else {
+                            md.appendMarkdown(`⚠️ **Fichier introuvable :** \`${rawTarget}\`\n\n`);
+                        }
+                    }
+
                     if (info.values) {
                         md.appendMarkdown(`**Valeurs :** ${info.values}\n\n`);
                     }
                     md.appendMarkdown(`**Cible :** ${info.targets}`);
 
-                    const range = new vscode.Range(
-                        position.line, colonStart,
-                        position.line, keyEnd
-                    );
+                    const range = new vscode.Range(position.line, colonStart, position.line, line.length);
                     return new vscode.Hover(md, range);
                 }
             }
@@ -104,22 +106,25 @@ export function createHoverProvider(): vscode.Disposable {
 
                 if (position.character >= start && position.character <= end) {
                     const refId = m[1];
-                    const idMap = buildIdMap(document);
-                    const decLine = idMap.get(refId);
+                    const loc = findIdDeclarationInWorkspace(document, refId);
 
                     const md = new vscode.MarkdownString();
                     md.isTrusted = true;
 
-                    if (decLine !== undefined) {
-                        const preview = document.lineAt(Math.max(0, decLine - 1)).text.trim();
+                    if (loc) {
+                        const isCurrentDoc = loc.uri.fsPath === document.uri.fsPath;
+                        const lineNum = loc.range.start.line + 1;
+                        const fileName = path.basename(loc.uri.fsPath);
+
                         md.appendMarkdown(`**MK4** · Référence croisée \`@${refId}\`\n\n`);
-                        md.appendMarkdown(`Ancre déclarée à la **ligne ${decLine + 1}**\n\n`);
-                        if (preview) {
-                            md.appendMarkdown(`> ${preview}`);
+                        if (isCurrentDoc) {
+                            md.appendMarkdown(`Ancre déclarée à la **ligne ${lineNum}**\n\n`);
+                        } else {
+                            md.appendMarkdown(`Ancre déclarée dans **\`${fileName}\`** (ligne ${lineNum})\n\n`);
                         }
                     } else {
                         md.appendMarkdown(`**MK4** · Référence croisée \`@${refId}\`\n\n`);
-                        md.appendMarkdown(`⚠️ Aucune ancre \`:id ${refId}\` trouvée dans ce document.`);
+                        md.appendMarkdown(`⚠️ Aucune ancre \`:id ${refId}\` trouvée dans ce document ou ses inclusions.`);
                     }
 
                     const range = new vscode.Range(position.line, start, position.line, end);
