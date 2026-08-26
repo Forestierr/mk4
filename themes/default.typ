@@ -38,6 +38,7 @@
   // ── Typographie ──
   set text(font: "Linux Libertine", size: 11pt, lang: lang)
   set par(justify: true, leading: 0.7em)
+  set math.equation(numbering: "(1)")
 
   // ── Numérotation des titres ──
   set heading(numbering: numbering_style)

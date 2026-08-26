@@ -13,4 +13,19 @@ describe('Document metadata tests', () => {
         expect(result).toContain('date: "2026"');
         expect(result).toContain('numbering_style: "1.1"');
     });
+
+    it('Doit ajouter la section bibliographie en fin de document', () => {
+        const md = ":title Mon Titre\n:bibliography ./references.bib\n:bib-style apa\n\n# Introduction\n\nTexte ici @cle";
+        const result = compileMarkdownToTypst(md, '', mockContext);
+        expect(result).toContain('#bibliography("./references.bib", style: "apa")');
+        const introPos = result.indexOf('Introduction');
+        const bibPos = result.indexOf('#bibliography');
+        expect(bibPos).toBeGreaterThan(introPos);
+    });
+
+    it('Doit accepter :bibliography même placé en bas du document', () => {
+        const md = "# Introduction\n\nTexte ici @cle\n\n:bibliography ./references.bib\n:bib-style ieee";
+        const result = compileMarkdownToTypst(md, '', mockContext);
+        expect(result).toContain('#bibliography("./references.bib", style: "ieee")');
+    });
 });

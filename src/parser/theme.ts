@@ -45,7 +45,7 @@ export function loadTheme(
 }
 
 /**
- * Assemble le document Typst final : thème + show rule + corps.
+ * Assemble le document Typst final : thème + show rule + corps + bibliographie.
  */
 export function assembleTypstDocument(
     themeCode: string,
@@ -58,6 +58,21 @@ export function assembleTypstDocument(
     const date = ann.date ? `"${ann.date}"` : 'none';
     const numberingStyle = ann.numbering ? `"${ann.numbering}"` : 'none';
     const toc = ann.toc ? 'true' : 'false';
+
+    // ── Bibliographie ──────────────────────────────────────────────────────
+    let bibliographySection = '';
+    const bibFile = ann.bibliography || ann.biblio;
+    if (bibFile && typeof bibFile === 'string' && bibFile.trim() !== '') {
+        const cleanBib = bibFile.trim().replace(/^['"]|['"]$/g, '').replace(/\\/g, '/');
+        const VALID_STYLES = new Set(['ieee', 'apa', 'chicago', 'mla', 'vancouver']);
+        const rawStyle = String(ann['bib-style'] || ann['bibStyle'] || 'ieee').toLowerCase();
+        const bibStyle = VALID_STYLES.has(rawStyle) ? rawStyle : 'ieee';
+        bibliographySection = `\n#bibliography("${cleanBib}", style: "${bibStyle}")`;
+    }
+
+    console.log('[MK4 assembleTypstDocument] Theme selected:', ann.theme || 'VS Code default');
+    console.log('[MK4 assembleTypstDocument] ann:', ann);
+    console.log('[MK4 assembleTypstDocument] bibliographySection:', JSON.stringify(bibliographySection));
 
     return `${themeCode}
 
@@ -72,5 +87,8 @@ export function assembleTypstDocument(
 )
 
 ${bodyTypst}
+${bibliographySection}
 `;
 }
+
+

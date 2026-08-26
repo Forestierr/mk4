@@ -21,7 +21,7 @@ export function registerMarkdownPreviewCommand(context: vscode.ExtensionContext)
         const updateMdWebview = () => {
             try {
                 const text = editor.document.getText();
-                const htmlBody = compileMarkdownToHtml(text);
+                const htmlBody = compileMarkdownToHtml(text, editor.document.uri.fsPath);
                 panel.webview.html = getMarkdownHtml(htmlBody);
             } catch (err: any) {
                 panel.webview.html = getErrorHtml('Erreur Markdown', err.message);

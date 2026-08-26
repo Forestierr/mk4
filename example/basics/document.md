@@ -8,14 +8,9 @@
 
 # Document
 
-> : Annotations pour les documents \\ \\
-> title \\
-> subtitle \\
-> author \\
-> date \\
-> lang \\
-> numbering \\
-> toc \\
+> : Annotations de niveau document : \
+> `:theme` · `:title` · `:subtitle` · `:author` · `:date` \
+> `:lang` · `:numbering` · `:toc` · `:bibliography` · `:bib-style` · `:include`
 
 :type info
 

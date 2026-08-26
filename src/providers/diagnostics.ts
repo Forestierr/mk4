@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 
-export const DOCUMENT_KEYS = new Set(['title', 'subtitle', 'author', 'date', 'theme', 'lang', 'numbering', 'toc']);
+export const DOCUMENT_KEYS = new Set(['title', 'subtitle', 'author', 'date', 'theme', 'lang', 'numbering', 'toc', 'bibliography', 'biblio', 'bib-style', 'bibStyle', 'include']);
 export const UNIVERSAL_KEYS = new Set(['id', 'align', 'layout']);
 export const CONTEXT_KEYS: Record<string, Set<string>> = {
     heading:    new Set(['short', 'numbering']),

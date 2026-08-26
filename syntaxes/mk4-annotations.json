@@ -2,19 +2,60 @@
   "scopeName": "markdown.mk4.injection",
   "injectionSelector": "L:text.html.markdown",
   "patterns": [
-    {
+    { "include": "#mk4-annotation" },
+    { "include": "#mk4-reference" }
+  ],
+  "repository": {
+    "mk4-annotation": {
+      "comment": "Ligne d'annotation MK4 : :key value — distingue la ponctuation, la clé et la valeur.",
       "match": "^(\\s*)(:)([a-zA-Z0-9_-]+)(?:(\\s+)(.*))?$",
       "captures": {
-        "2": {
-          "name": "punctuation.definition.tag.mk4"
+        "2": { "name": "punctuation.definition.tag.mk4" },
+        "3": { "name": "entity.name.tag.mk4" },
+        "5": { "patterns": [{ "include": "#mk4-value" }] }
+      }
+    },
+    "mk4-value": {
+      "patterns": [
+        {
+          "comment": "Valeurs booléennes true/false",
+          "match": "\\b(true|false)\\b",
+          "name": "constant.language.boolean.mk4"
         },
-        "3": {
-          "name": "entity.name.tag.mk4"
+        {
+          "comment": "Valeurs énumérées connues (types de callout)",
+          "match": "\\b(note|info|tip|warning|error)\\b",
+          "name": "support.constant.mk4"
         },
-        "5": {
+        {
+          "comment": "Chemin de fichier (commence par . ou /)",
+          "match": "(\\.{1,2}/[^\\s]+|/[^\\s]+)",
+          "name": "string.unquoted.path.mk4"
+        },
+        {
+          "comment": "URL (http / https)",
+          "match": "https?://[^\\s]+",
+          "name": "markup.underline.link.mk4"
+        },
+        {
+          "comment": "Valeur numérique avec unité (%, cm, pt, em)",
+          "match": "\\b\\d+(\\.\\d+)?(pt|cm|mm|in|em|%)\\b",
+          "name": "constant.numeric.unit.mk4"
+        },
+        {
+          "comment": "Valeur textuelle générique (fallback)",
+          "match": ".+",
           "name": "string.unquoted.mk4"
         }
+      ]
+    },
+    "mk4-reference": {
+      "comment": "Référence croisée MK4 : @identifiant (hors bloc de code et annotation)",
+      "match": "(?<![`:])(@)([a-zA-Z0-9_-]+)\\b",
+      "captures": {
+        "1": { "name": "punctuation.definition.reference.mk4" },
+        "2": { "name": "variable.other.reference.mk4" }
       }
     }
-  ]
+  }
 }

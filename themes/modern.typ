@@ -48,6 +48,7 @@
   // ── Typographie ──
   set text(font: ("Inter", "Segoe UI", "Linux Libertine"), size: 10.5pt, lang: lang)
   set par(justify: true, leading: 0.72em)
+  set math.equation(numbering: "(1)")
 
   // ── Numérotation ──
   set heading(numbering: numbering_style)
