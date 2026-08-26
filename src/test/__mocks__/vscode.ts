@@ -1,5 +1,5 @@
 // Mock minimal du module 'vscode' pour les tests unitaires
-// Couvre les APIs utilisées par parser.ts et extension.ts
+// Couvre les APIs utilisées par parser.ts, extension.ts et les providers.
 
 export const workspace = {
     getConfiguration: (_section?: string) => ({
@@ -22,6 +22,13 @@ export enum DiagnosticSeverity {
     Hint = 3
 }
 
+export class Position {
+    constructor(
+        public readonly line: number,
+        public readonly character: number
+    ) {}
+}
+
 export class Range {
     constructor(
         public readonly startLine: number,
@@ -31,11 +38,36 @@ export class Range {
     ) {}
 }
 
+export class Location {
+    constructor(
+        public readonly uri: any,
+        public readonly range: Range
+    ) {}
+}
+
 export class Diagnostic {
     public source: string = '';
     constructor(
         public readonly range: Range,
         public readonly message: string,
         public readonly severity: DiagnosticSeverity
+    ) {}
+}
+
+export class MarkdownString {
+    public value: string = '';
+    public isTrusted: boolean = false;
+    public supportHtml: boolean = false;
+
+    appendMarkdown(text: string): this {
+        this.value += text;
+        return this;
+    }
+}
+
+export class Hover {
+    constructor(
+        public readonly contents: MarkdownString,
+        public readonly range?: Range
     ) {}
 }

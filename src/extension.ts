@@ -7,6 +7,10 @@ import { registerPreviewCommand } from './commands/preview';
 import { registerExportCommands } from './commands/export';
 import { registerMarkdownPreviewCommand } from './commands/markdown-preview';
 import { createCompletionProvider } from './providers/completion';
+import { createHoverProvider } from './providers/hover';
+import { createDefinitionProvider, createReferenceProvider, createRenameProvider } from './providers/definition';
+import { MK4StatusBar, registerThemePickerCommand } from './providers/statusBar';
+import { createCodeLensProvider } from './providers/codelens';
 
 /** Sessions de preview actives (pour le nettoyage final). */
 const activeSessions: { dir: string; id: string }[] = [];
@@ -40,10 +44,33 @@ export function activate(context: vscode.ExtensionContext) {
 
     const diagnosticCollection = vscode.languages.createDiagnosticCollection('mk4');
 
-    const previewDisposable = registerPreviewCommand(context, diagnosticCollection, activeSessions);
+    // ── Providers & commandes ────────────────────────────────────────────────
+    const previewDisposable        = registerPreviewCommand(context, diagnosticCollection, activeSessions);
     const [exportPdfDisposable, exportTypstDisposable] = registerExportCommands(context);
     const markdownPreviewDisposable = registerMarkdownPreviewCommand(context);
-    const completionDisposable = createCompletionProvider();
+    const completionDisposable     = createCompletionProvider();
+    const hoverDisposable          = createHoverProvider();
+    const definitionDisposable     = createDefinitionProvider();
+    const referenceDisposable      = createReferenceProvider();
+    const renameDisposable         = createRenameProvider();
+    const codeLensDisposable       = createCodeLensProvider();
+    const themePickerDisposable    = registerThemePickerCommand();
+
+    // ── Barre d'état ────────────────────────────────────────────────────────
+    const statusBar = new MK4StatusBar();
+
+    // Afficher la barre d'état pour l'éditeur actif au démarrage
+    if (vscode.window.activeTextEditor) {
+        statusBar.show(vscode.window.activeTextEditor.document);
+    }
+
+    const activeEditorSub = vscode.window.onDidChangeActiveTextEditor(editor => {
+        if (editor) {
+            statusBar.show(editor.document);
+        } else {
+            statusBar.hide();
+        }
+    });
 
     context.subscriptions.push(
         previewDisposable,
@@ -51,7 +78,15 @@ export function activate(context: vscode.ExtensionContext) {
         exportTypstDisposable,
         markdownPreviewDisposable,
         completionDisposable,
-        diagnosticCollection
+        hoverDisposable,
+        definitionDisposable,
+        referenceDisposable,
+        renameDisposable,
+        codeLensDisposable,
+        themePickerDisposable,
+        activeEditorSub,
+        diagnosticCollection,
+        { dispose: () => statusBar.dispose() }
     );
 }
 

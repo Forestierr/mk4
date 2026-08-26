@@ -1,0 +1,91 @@
+{
+  "MK4 - Métadonnées du document": {
+    "prefix": "mk4-meta",
+    "description": "Bloc de métadonnées MK4 en tête de document",
+    "scope": "markdown",
+    "body": [
+      ":theme ${1:./template.typ}",
+      ":title ${2:Titre du document}",
+      ":subtitle ${3:Sous-titre}",
+      ":author ${4:Auteur}",
+      ":date ${5:${CURRENT_YEAR}}",
+      ":lang ${6|fr,en,de,es|}",
+      ":numbering ${7:1.1}",
+      ":toc ${8|true,false|}",
+      ""
+    ]
+  },
+  "MK4 - Bloc de code annoté": {
+    "prefix": "mk4-code",
+    "description": "Bloc de code avec annotations MK4 (fichier, numéros de ligne, surlignage)",
+    "scope": "markdown",
+    "body": [
+      "```${1:typescript}",
+      "$2",
+      "```",
+      ":filename ${3:fichier.${1}}",
+      ":lines ${4|true,false|}",
+      ":highlight ${5:1}",
+      ":caption ${6:Description du code}"
+    ]
+  },
+  "MK4 - Image annotée": {
+    "prefix": "mk4-image",
+    "description": "Image Markdown avec annotations MK4 (largeur, alignement, légende)",
+    "scope": "markdown",
+    "body": [
+      "![${1:Description}](${2:./image.png})",
+      ":width ${3:80%}",
+      ":align ${4|center,left,right|}",
+      ":caption ${5:Légende de l'image}",
+      ":id ${6:fig_${1/[^a-z0-9]/_/g}}"
+    ]
+  },
+  "MK4 - Callout / Admonition": {
+    "prefix": "mk4-callout",
+    "description": "Bloc d'alerte stylisé (note, info, tip, warning, error)",
+    "scope": "markdown",
+    "body": [
+      "> ${1:Contenu de l'alerte}",
+      ":type ${2|note,info,tip,warning,error|}"
+    ]
+  },
+  "MK4 - Tableau annoté": {
+    "prefix": "mk4-table",
+    "description": "Tableau GFM avec annotations MK4 (légende, mode compact)",
+    "scope": "markdown",
+    "body": [
+      "| ${1:Colonne 1} | ${2:Colonne 2} | ${3:Colonne 3} |",
+      "| :--- | :--- | :--- |",
+      "| $4 | $5 | $6 |",
+      ":caption ${7:Légende du tableau}",
+      ":compact ${8|false,true|}"
+    ]
+  },
+  "MK4 - Titre avec ID": {
+    "prefix": "mk4-heading",
+    "description": "Titre Markdown avec ID pour références croisées",
+    "scope": "markdown",
+    "body": [
+      "## ${1:Titre de section}",
+      ":id ${2:${1/[^a-z0-9]/_/g}}",
+      ":short ${3:Titre court}"
+    ]
+  },
+  "MK4 - Saut de page": {
+    "prefix": "mk4-pagebreak",
+    "description": "Insère un saut de page Typst",
+    "scope": "markdown",
+    "body": [
+      ":layout pagebreak"
+    ]
+  },
+  "MK4 - Annotation ID": {
+    "prefix": "mk4-id",
+    "description": "Définit un identifiant pour une référence croisée (@id)",
+    "scope": "markdown",
+    "body": [
+      ":id ${1:identifiant}"
+    ]
+  }
+}
