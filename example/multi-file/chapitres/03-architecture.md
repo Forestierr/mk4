@@ -13,9 +13,11 @@ L'architecture proposée repose sur trois couches hiérarchiques :
 ## Modèle formel de l'agent
 :id sec_modele_formel
 
-Chaque agent $a_i$ est défini par le quadruplet $\langle B_i, D_i, I_i, \pi_i \rangle$ où :
+Chaque agent $a_i$ est défini par le quadruplet $(B_i, D_i, I_i, pi_i)$ où :
 
-$$B_i \subseteq \mathcal{W}, \quad D_i \subseteq 2^{\mathcal{W}}, \quad I_i \in \Pi, \quad \pi_i : B_i \times D_i \rightarrow I_i$$
+$$
+B_i subset.eq cal(W), quad D_i subset.eq 2^(cal(W)), quad I_i in Pi, quad pi_i : B_i times D_i -> I_i
+$$
 :id eq_agent
 :align center
 

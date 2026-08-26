@@ -16,7 +16,7 @@ Trois axes d'amélioration sont envisagés pour les travaux futurs :
 
 1. **Apprentissage par renforcement décentralisé** : remplacer la fonction de priorité heuristique par un modèle appris pour améliorer l'adaptation dynamique.
 2. **Déploiement sur architecture hétérogène** : tester le système sur des nœuds ARM et RISC-V pour valider la portabilité.
-3. **Intégration du protocole Gossip** : réduire la complexité de communication du consensus de $O(n^2)$ à $O(n \log n)$ par diffusion épidémique.
+3. **Intégration du protocole Gossip** : réduire la complexité de communication du consensus de $O(n^2)$ à $O(n log n)$ par diffusion épidémique.
 
 > L'ensemble du code source, des jeux de données et des scripts de reproduction des expériences est disponible en accès libre sur GitHub.
 :type note

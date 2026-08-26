@@ -43,7 +43,7 @@ Smith @smith1980 a formalisé le **Contract Net Protocol** (CNP), premier protoc
 | Propriété | CNP original | Extensions hiérarchiques |
 | :--- | :---: | :---: |
 | Tolérance aux pannes | Aucune | Partielle |
-| Passage à l'échelle | $O(n^2)$ messages | $O(n \log n)$ messages |
+| Passage à l'échelle | $O(n^2)$ messages | $O(n log n)$ messages |
 | Optimalité de l'allocation | Non garantie | Garantie locale |
 :caption Comparaison CNP original vs extensions — d'après @wooldridge2009
 :compact true

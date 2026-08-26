@@ -23,7 +23,7 @@ Les protocoles les plus répandus pour la coordination inter-agents sont le **Co
 2. **Soumission** (*Propose*) : les agents contractants soumettent leurs offres.
 3. **Attribution** (*Award*) : le manager sélectionne la meilleure offre et notifie les participants.
 
-> La complexité de la phase d'attribution est $O(n \log n)$ avec $n$ agents contractants, ce qui reste acceptable jusqu'à $n \approx 10^4$ nœuds sur du matériel standard.
+> La complexité de la phase d'attribution est $O(n log n)$ avec $n$ agents contractants, ce qui reste acceptable jusqu'à $n approx 10^4$ nœuds sur du matériel standard.
 :type info
 
 ## Limites des approches existantes

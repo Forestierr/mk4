@@ -318,11 +318,49 @@ fn main() {
 
 > **Types supportés :** `note` (bleu), `info` (cyan), `tip` (vert), `warning` (orange), `error` (rouge). Les citations classiques acceptent également `:author <nom>` et `:link <url>`.
 
+### Bibliographie et citations BibTeX
+
+Générez automatiquement une section de références à partir d'un fichier BibTeX `.bib` :
+
+```markdown
+:bibliography ./references.bib
+:bib-style ieee
+```
+
+- `:bibliography` (ou `:biblio`) : Chemin vers le fichier `.bib`.
+- `:bib-style` (ou `:bibStyle`) : Style de citation (`ieee` par défaut, `apa`, `chicago`, `mla`, `vancouver`).
+- Citez vos références dans le texte avec la syntaxe Typst `@cle_citation` (ex: `D'après les travaux de @knuth1984...`).
+
+### Multi-fichiers et inclusions
+
+Découpez vos documents volumineux ou chapitres de rapport :
+
+```markdown
+:include ./chapitres/01-introduction.md
+:include ./chapitres/02-architecture.md
+```
+
+- Inclusion récursive avec détection des boucles circulaires.
+- Les métadonnées de document (`:title`, `:theme`...) des sous-fichiers sont automatiquement ignorées pour préserver celles du document principal.
+
 ### Saut de page
 
 ```markdown
 :layout pagebreak
 ```
+
+---
+
+## Outils d'assistance VS Code
+
+MK4 intègre une suite d'outils d'assistance directement dans l'éditeur :
+
+- **Documentation au survol (Hover) :** Survolez n'importe quelle annotation (`:width`, `:type`, `:bib-style`…) ou référence croisée (`@mon_ancre`) pour afficher une infobulle interactive avec description, valeurs acceptées et cible.
+- **Autocomplétion intelligente (IntelliSense) :** Tapez `:` en début de ligne pour afficher la liste des annotations valides adaptées au contexte (titre, image, code, tableau, citation ou document).
+- **Navigation & Références croisées :** `Ctrl + Clic` (ou `F12`) sur une référence `@ancre` vous amène directement à sa ligne de déclaration `:id ancre`.
+- **Sélecteur de thème rapide :** Cliquez sur le nom du thème dans la **barre d'état** (en bas à droite) pour basculer instantanément entre `default`, `modern`, `academic` ou un thème `.typ` personnalisé.
+
+---
 
 ## Thèmes personnalisés
 

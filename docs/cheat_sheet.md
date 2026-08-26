@@ -27,5 +27,5 @@ Les annotations s'insèrent sur la ligne suivant immédiatement le bloc cible (o
 | `:type` | `note`, `info`, `tip`, `warning`, `error` | Citation | Transforme la citation en callout stylisé |
 | `:link` / `:source` | `<url>` | Citation | Ajoute un lien source cliquable |
 | `:include` | `./chapitre.md` | Document | Inclut un sous-fichier Markdown à cet endroit (récursif) |
-| `:bibliography` | `./refs.bib` | Document | Ajoute une section bibliographie BibTeX |
-| `:bib-style` | `ieee`, `apa`, `chicago`, `mla`, `vancouver` | Document | Style de citation (défaut : `ieee`) |
+| `:bibliography` / `:biblio` | `./refs.bib` | Document | Ajoute une section bibliographie BibTeX générée automatiquement |
+| `:bib-style` / `:bibStyle` | `ieee`, `apa`, `chicago`, `mla`, `vancouver` | Document | Style de citation (défaut : `ieee`) |

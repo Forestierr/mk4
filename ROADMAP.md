@@ -58,7 +58,7 @@ Chaque élément est rattaché à son ticket GitHub pour suivre les discussions 
 - [x] **Actions rapides en en-tête (CodeLens Provider)**
   - Afficher des boutons interactifs discrets au-dessus du document pour lancer en un clic l'aperçu Typst, l'export PDF ou changer de gabarit.
 
-- [ ] **[Validation et diagnostics stricts des annotations](https://github.com/Forestierr/mk4/issues/11)** (`#11`)
+- [x] **[Validation et diagnostics stricts des annotations](https://github.com/Forestierr/mk4/issues/11)** (`#11`)
   - Avertir en temps réel en cas de valeur invalide (ex: faute de frappe dans une clé) avec suggestions de correction automatique (*Quick Fix*).
 
 ## Moteur & Infrastructure
