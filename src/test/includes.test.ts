@@ -338,6 +338,18 @@ describe('Integration — Compilation Typst CLI réelle', () => {
         expect(deps.size).toBeGreaterThanOrEqual(4);
         expect(typstCode).toContain('Systèmes Multi-Agents');
 
+        // Vérifier si le binaire typst est installé sur la machine / runner
+        let hasTypst = false;
+        try {
+            await execFileAsync('typst', ['--version']);
+            hasTypst = true;
+        } catch {
+            hasTypst = false;
+        }
+        if (!hasTypst) {
+            return; // Skip l'appel CLI si Typst n'est pas installé (ex: runner CI GitHub)
+        }
+
         const baseDir = path.dirname(mdPath);
         const tempTyp = path.join(baseDir, '.test-multi.typ');
         const tempSvg = path.join(baseDir, '.test-multi-{n}.svg');
@@ -375,6 +387,18 @@ describe('Integration — Compilation Typst CLI réelle', () => {
         const typstCode = compileMarkdownToTypst(text, mdPath, mockContext, { dependencies: deps });
 
         expect(typstCode).toContain('#bibliography("./references.bib", style: "ieee")');
+
+        // Vérifier si le binaire typst est installé sur la machine / runner
+        let hasTypst = false;
+        try {
+            await execFileAsync('typst', ['--version']);
+            hasTypst = true;
+        } catch {
+            hasTypst = false;
+        }
+        if (!hasTypst) {
+            return; // Skip l'appel CLI si Typst n'est pas installé (ex: runner CI GitHub)
+        }
 
         const baseDir = path.dirname(mdPath);
         const tempTyp = path.join(baseDir, '.test-bib.typ');
