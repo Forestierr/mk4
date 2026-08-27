@@ -5,6 +5,22 @@ Tous les changements notables sur l'extension "mk4" seront documentés dans ce f
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/), 
 et ce projet adhère au [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.1](https://github.com/Forestierr/mk4/compare/v1.3.0...v1.3.1) (2026-08-26)
+
+
+### Bug Fixes
+
+* **build:** add clean step before compile to prevent stale build artifacts and fix launch task ([a3a2735](https://github.com/Forestierr/mk4/commit/a3a273583cfdbdccb52abc6e44d41fdd475e1a1f))
+* **build:** add esbuild bundler and optimize vscodeignore for lightweight packaging ([621e782](https://github.com/Forestierr/mk4/commit/621e782b55dd6ce96be35bd52218d8643a4f6b3b))
+* **completion:** restrict bibliography suggestions to document header only ([d8b23fd](https://github.com/Forestierr/mk4/commit/d8b23fd65fc539c146b35ddfecdc8c9e7bfe476d))
+* **diagnostics:** allow standalone document directives and clear sub diagnostics ([ee98f44](https://github.com/Forestierr/mk4/commit/ee98f44c379f462a57fa38c8003327b21b6b4267))
+* multi-file workflow, interactive preview navigation, and esbuild packaging ([773061f](https://github.com/Forestierr/mk4/commit/773061f17e00339245c45ab09bed6a47c1a27915))
+* **multi-file:** open source on preview click and attribute errors to includes ([87631c6](https://github.com/Forestierr/mk4/commit/87631c63de185d2efcd1f093339100ff8e2177f5))
+* **parser:** normalize include paths on Windows and fix document metadata propagation ([5e07ab5](https://github.com/Forestierr/mk4/commit/5e07ab571686241987a13b1526f7266def61e6d4))
+* **preview:** add live reactive updates for includes, themes, and Typst root ([ba4c744](https://github.com/Forestierr/mk4/commit/ba4c7444e65a4e079e4cf35d489a838a61d27af4))
+* **providers:** support multi-file definition lookup and file path diagnostics with normalized paths ([64bf73b](https://github.com/Forestierr/mk4/commit/64bf73bdf8bde05469d66185493848060adc714f))
+* **test:** skip Typst CLI execution in CI if binary is not installed ([13ec9d6](https://github.com/Forestierr/mk4/commit/13ec9d60c9fa70a239c7e16aef664736bc924127))
+
 ## [1.3.0](https://github.com/Forestierr/mk4/compare/v1.2.1...v1.3.0) (2026-08-26)
 
 
