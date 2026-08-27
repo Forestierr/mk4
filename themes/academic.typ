@@ -7,14 +7,21 @@
   author: none,
   date: none,
   numbering_style: none,
-  lang: "fr",
   toc: false,
+  // ── Réglages injectés par MK4 (depuis les paramètres VS Code) ──
+  lang: "fr",
+  page_margin: "2.8cm",
+  page_numbering: "1",
+  font_family: none,
+  font_size: none,
+  syntax_highlighting: true,
   doc,
 ) = {
   // ── Configuration de la page ──
+  let margin_val = eval(page_margin)
   set page(
     paper: "a4",
-    margin: (x: 2.8cm, y: 3cm),
+    margin: (x: margin_val, y: margin_val * 1.07),
     header: context {
       if counter(page).get().first() > 1 {
         set text(8pt, style: "italic", fill: luma(80))
@@ -34,18 +41,25 @@
       set text(8pt, fill: luma(100))
       line(length: 100%, stroke: 0.3pt + luma(200))
       v(0.3em)
-      align(center)[— #counter(page).display("1") —]
+      if page_numbering != none {
+        align(center)[— #counter(page).display(page_numbering) —]
+      }
     },
   )
 
   // ── Typographie académique ──
+  let base_font = if font_family != none { font_family } else { ("New Computer Modern", "Latin Modern Roman", "Linux Libertine") }
+  let base_size = if font_size   != none { eval(font_size) } else { 11pt }
   set text(
-    font: ("New Computer Modern", "Latin Modern Roman", "Linux Libertine"),
-    size: 11pt,
+    font: base_font,
+    size: base_size,
     lang: lang,
   )
   set par(justify: true, first-line-indent: 1.5em, leading: 0.68em)
   set math.equation(numbering: "(1)")
+
+  // ── Coloration syntaxique ──
+  set raw(syntaxes: (), theme: none) if not syntax_highlighting
 
   // ── Numérotation ──
   set heading(numbering: numbering_style)
@@ -57,25 +71,25 @@
     if it.level == 1 {
       v(2em, weak: true)
       block(below: 1em)[
-        #text(size: 15pt, weight: "bold", it)
+        #text(size: 1.36em, weight: "bold", it)
         #v(-0.3em)
         #line(length: 100%, stroke: 0.6pt + luma(100))
       ]
     } else if it.level == 2 {
       v(1.4em, weak: true)
       block(below: 0.7em)[
-        #text(size: 12.5pt, weight: "bold", it)
+        #text(size: 1.14em, weight: "bold", it)
       ]
     } else {
       v(1em, weak: true)
       block(below: 0.5em)[
-        #text(size: 11pt, weight: "bold", style: "italic", it)
+        #text(size: 1em, weight: "bold", style: "italic", it)
       ]
     }
   }
 
   // ── Notes de bas de page ──
-  show footnote.entry: set text(size: 9pt)
+  show footnote.entry: set text(size: 0.82em)
 
   // ══════════════════════════════════════
   //  EN-TÊTE ACADÉMIQUE
@@ -85,11 +99,11 @@
     v(4cm)
 
     align(center)[
-      #text(size: 20pt, weight: "bold", title)
+      #text(size: 1.82em, weight: "bold", title)
 
       #if subtitle != none {
         v(0.5em)
-        text(size: 14pt, style: "italic", fill: luma(60), subtitle)
+        text(size: 1.27em, style: "italic", fill: luma(60), subtitle)
       }
 
       #v(1.5em)
@@ -97,12 +111,12 @@
       #v(1em)
 
       #if author != none {
-        text(size: 12pt, smallcaps(author))
+        text(size: 1.09em, smallcaps(author))
       }
 
       #if date != none {
         v(0.5em)
-        text(size: 10pt, fill: luma(80), date)
+        text(size: 0.91em, fill: luma(80), date)
       }
     ]
 

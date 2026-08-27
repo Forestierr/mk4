@@ -91,31 +91,98 @@
         "path": "./.vscode/mk4.code-snippets"
       }
     ],
-    "configuration": {
-      "title": "MK4 Typst Settings",
-      "properties": {
-        "mk4.typst.defaultTheme": {
-          "type": "string",
-          "default": "default",
-          "enum": [
-            "default",
-            "modern",
-            "academic"
-          ],
-          "description": "Le thème Typst par défaut à utiliser pour la compilation."
-        },
-        "mk4.typst.customThemePath": {
-          "type": "string",
-          "default": "",
-          "description": "Chemin absolu vers un fichier .typ personnalisé (écrase le thème par défaut)."
-        },
-        "mk4.editor.enableCodeLens": {
-          "type": "boolean",
-          "default": false,
-          "description": "Affiche les boutons d'action MK4 (CodeLens) en en-tête des fichiers Markdown."
+    "configuration": [
+      {
+        "title": "MK4 — Aperçu",
+        "properties": {
+          "mk4.preview.debounceMs": {
+            "type": "number",
+            "default": 300,
+            "minimum": 100,
+            "maximum": 2000,
+            "description": "Délai (en ms) avant la mise à jour de la prévisualisation après une frappe. Augmentez cette valeur sur les machines lentes."
+          },
+          "mk4.preview.enableScrollSync": {
+            "type": "boolean",
+            "default": true,
+            "description": "Synchronise le défilement entre l'éditeur et la prévisualisation."
+          },
+          "mk4.editor.enableCodeLens": {
+            "type": "boolean",
+            "default": false,
+            "description": "Affiche les boutons d'action MK4 (CodeLens) en en-tête des fichiers Markdown."
+          }
+        }
+      },
+      {
+        "title": "MK4 — Thème",
+        "properties": {
+          "mk4.typst.defaultTheme": {
+            "type": "string",
+            "default": "default",
+            "enum": ["default", "modern", "academic"],
+            "enumDescriptions": [
+              "Thème propre et lisible, sans page de garde séparée.",
+              "Thème moderne avec accents colorés et page de garde.",
+              "Thème académique formel, inspiré LaTeX."
+            ],
+            "description": "Le thème Typst par défaut à utiliser pour la compilation."
+          },
+          "mk4.typst.customThemePath": {
+            "type": "string",
+            "default": "",
+            "description": "Chemin absolu vers un fichier .typ personnalisé (écrase le thème par défaut)."
+          }
+        }
+      },
+      {
+        "title": "MK4 — Mise en page",
+        "properties": {
+          "mk4.typst.lang": {
+            "type": "string",
+            "default": "",
+            "markdownDescription": "Code de langue du document Typst (`fr`, `en`, `de`…). Laissez vide pour utiliser la langue de l'interface VS Code automatiquement."
+          },
+          "mk4.typst.pageMargin": {
+            "type": "string",
+            "default": "2.5cm",
+            "markdownDescription": "Marge des pages (ex : `2.5cm`, `1in`, `20mm`). S'applique aux marges horizontales et verticales."
+          },
+          "mk4.typst.pageNumbering": {
+            "type": "string",
+            "default": "1 / 1",
+            "enum": ["1 / 1", "1", "i", "none"],
+            "enumDescriptions": [
+              "Page X sur Y total (ex : 2 / 5)",
+              "Numéro de page simple (ex : 2)",
+              "Numérotation en chiffres romains (ex : ii)",
+              "Pas de numérotation"
+            ],
+            "description": "Format de numérotation des pages dans le pied de page."
+          }
+        }
+      },
+      {
+        "title": "MK4 — Typographie",
+        "properties": {
+          "mk4.typst.fontFamily": {
+            "type": "string",
+            "default": "",
+            "markdownDescription": "Police principale du document (ex : `Linux Libertine`, `New Computer Modern`, `Arial`). Laissez vide pour utiliser celle du thème."
+          },
+          "mk4.typst.fontSize": {
+            "type": "string",
+            "default": "",
+            "markdownDescription": "Taille de la police principale (ex : `11pt`, `12pt`, `10.5pt`). Laissez vide pour utiliser celle du thème."
+          },
+          "mk4.typst.syntaxHighlighting": {
+            "type": "boolean",
+            "default": true,
+            "description": "Active la coloration syntaxique dans les blocs de code Typst."
+          }
         }
       }
-    }
+    ]
   },
   "scripts": {
     "vscode:prepublish": "npm run package-build && node scripts/fetch-typst-binaries.js",

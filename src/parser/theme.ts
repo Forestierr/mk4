@@ -72,6 +72,36 @@ export function loadTheme(
 }
 
 /**
+ * Lit les réglages de mise en page et de typographie depuis la configuration VS Code.
+ */
+export interface TypstRenderConfig {
+    lang: string;
+    pageMargin: string;
+    pageNumbering: string;
+    fontFamily: string;
+    fontSize: string;
+    syntaxHighlighting: boolean;
+}
+
+export function getRenderConfig(): TypstRenderConfig {
+    const config = vscode.workspace.getConfiguration('mk4');
+
+    // Langue : réglage explicite → langue VS Code → 'fr'
+    const langSetting = config.get<string>('typst.lang') || '';
+    const vscodeLang = vscode.env.language?.split('-')[0] || 'fr';
+    const lang = langSetting.trim() || vscodeLang;
+
+    return {
+        lang,
+        pageMargin:        config.get<string>('typst.pageMargin')       || '2.5cm',
+        pageNumbering:     config.get<string>('typst.pageNumbering')     || '1 / 1',
+        fontFamily:        config.get<string>('typst.fontFamily')        || '',
+        fontSize:          config.get<string>('typst.fontSize')          || '',
+        syntaxHighlighting: config.get<boolean>('typst.syntaxHighlighting') ?? true,
+    };
+}
+
+/**
  * Assemble le document Typst final : thème + show rule + corps + bibliographie.
  */
 export function assembleTypstDocument(
@@ -85,6 +115,15 @@ export function assembleTypstDocument(
     const date = ann.date ? `"${ann.date}"` : 'none';
     const numberingStyle = ann.numbering ? `"${ann.numbering}"` : 'none';
     const toc = ann.toc ? 'true' : 'false';
+
+    // Réglages VS Code
+    const rc = getRenderConfig();
+    const lang          = `"${rc.lang}"`;
+    const pageMargin    = `"${rc.pageMargin}"`;
+    const pageNumbering = rc.pageNumbering === 'none' ? 'none' : `"${rc.pageNumbering}"`;
+    const fontFamily    = rc.fontFamily ? `"${rc.fontFamily}"` : 'none';
+    const fontSize      = rc.fontSize   ? `"${rc.fontSize}"`   : 'none';
+    const syntaxHighlighting = rc.syntaxHighlighting ? 'true' : 'false';
 
     // ── Bibliographie ──────────────────────────────────────────────────────
     let bibliographySection = '';
@@ -106,6 +145,12 @@ export function assembleTypstDocument(
   date: ${date},
   numbering_style: ${numberingStyle},
   toc: ${toc},
+  lang: ${lang},
+  page_margin: ${pageMargin},
+  page_numbering: ${pageNumbering},
+  font_family: ${fontFamily},
+  font_size: ${fontSize},
+  syntax_highlighting: ${syntaxHighlighting},
   doc
 )
 

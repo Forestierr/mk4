@@ -285,6 +285,10 @@ export function registerPreviewCommand(
                     }
                 }
             } else if (message.command === 'revealLine') {
+                // Preview → Éditeur (scroll sync)
+                const scrollSyncEnabled = vscode.workspace.getConfiguration('mk4').get<boolean>('preview.enableScrollSync') ?? true;
+                if (!scrollSyncEnabled) { return; }
+
                 isScrollingFromWebview = true;
                 if (webviewScrollTimeout) { clearTimeout(webviewScrollTimeout); }
                 webviewScrollTimeout = setTimeout(() => { isScrollingFromWebview = false; }, 150);
@@ -295,10 +299,12 @@ export function registerPreviewCommand(
             }
         });
 
-        // Éditeur → Preview
+        // Éditeur → Preview (scroll sync)
         let scrollPending = false;
         const scrollSub = vscode.window.onDidChangeTextEditorVisibleRanges(e => {
             if (e.textEditor === editor) {
+                const scrollSyncEnabled = vscode.workspace.getConfiguration('mk4').get<boolean>('preview.enableScrollSync') ?? true;
+                if (!scrollSyncEnabled) { return; }
                 if (isScrollingFromWebview) { return; }
                 if (scrollPending) { return; }
                 scrollPending = true;
@@ -325,7 +331,8 @@ export function registerPreviewCommand(
 
             if (changedPath === rootPathNorm || activeDependencies.has(changedPath)) {
                 if (updateTimeout) { clearTimeout(updateTimeout); }
-                updateTimeout = setTimeout(() => updateWebview(), 300);
+                const debounce = vscode.workspace.getConfiguration('mk4').get<number>('preview.debounceMs') ?? 300;
+                updateTimeout = setTimeout(() => updateWebview(), debounce);
             }
         });
 
@@ -337,7 +344,8 @@ export function registerPreviewCommand(
 
             if (changedPath === rootPathNorm || activeDependencies.has(changedPath)) {
                 if (updateTimeout) { clearTimeout(updateTimeout); }
-                updateTimeout = setTimeout(() => updateWebview(), 300);
+                const debounce = vscode.workspace.getConfiguration('mk4').get<number>('preview.debounceMs') ?? 300;
+                updateTimeout = setTimeout(() => updateWebview(), debounce);
             }
         };
         const watcherChangeSub = fileWatcher.onDidChange(onFsChange);
@@ -377,8 +385,16 @@ export function registerPreviewCommand(
         // Réagir aux changements de configuration VS Code
         context.subscriptions.push(
             vscode.workspace.onDidChangeConfiguration(event => {
-                if (event.affectsConfiguration('mk4.typst.defaultTheme') ||
-                    event.affectsConfiguration('mk4.typst.customThemePath')) {
+                if (
+                    event.affectsConfiguration('mk4.typst.defaultTheme') ||
+                    event.affectsConfiguration('mk4.typst.customThemePath') ||
+                    event.affectsConfiguration('mk4.typst.lang') ||
+                    event.affectsConfiguration('mk4.typst.pageMargin') ||
+                    event.affectsConfiguration('mk4.typst.pageNumbering') ||
+                    event.affectsConfiguration('mk4.typst.fontFamily') ||
+                    event.affectsConfiguration('mk4.typst.fontSize') ||
+                    event.affectsConfiguration('mk4.typst.syntaxHighlighting')
+                ) {
                     updateWebview();
                 }
             })
