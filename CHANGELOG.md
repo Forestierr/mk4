@@ -5,6 +5,20 @@ Tous les changements notables sur l'extension "mk4" seront documentés dans ce f
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/), 
 et ce projet adhère au [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0](https://github.com/Forestierr/mk4/compare/v1.3.1...v1.4.0) (2026-08-27)
+
+
+### Features
+
+* add 8 configurable settings grouped by category ([2fc24dc](https://github.com/Forestierr/mk4/commit/2fc24dce2d4947657a092596be862af60f7a88b4))
+* **build:** bundle typst binary in vsix, remove system install dependency ([8b5ee5f](https://github.com/Forestierr/mk4/commit/8b5ee5fc42762265ce6b22c7052befab7831ec64))
+* intégration du binaire Typst, nouveaux paramètres et refonte de la documentation ([6329250](https://github.com/Forestierr/mk4/commit/6329250c9cec2013fc821246debda49192d0e140))
+
+
+### Bug Fixes
+
+* redaing properties of language ([b67f8d0](https://github.com/Forestierr/mk4/commit/b67f8d0d3539b3f58226ad962da94d47507dffbf))
+
 ## [1.3.1](https://github.com/Forestierr/mk4/compare/v1.3.0...v1.3.1) (2026-08-26)
 
 
