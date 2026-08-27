@@ -88,7 +88,7 @@ export function getRenderConfig(): TypstRenderConfig {
 
     // Langue : réglage explicite → langue VS Code → 'fr'
     const langSetting = config.get<string>('typst.lang') || '';
-    const vscodeLang = vscode.env.language?.split('-')[0] || 'fr';
+    const vscodeLang = vscode.env?.language?.split('-')[0] || 'fr';
     const lang = langSetting.trim() || vscodeLang;
 
     return {
