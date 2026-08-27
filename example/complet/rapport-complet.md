@@ -77,11 +77,7 @@ impl TelemetryPipeline {
     }
 }
 ```
-:filename pipeline.rs
-:lines true
-:highlight 11-16
-:caption Pipeline de décodage et filtrage temps réel
-:id code_pipeline
+:
 
 > Conseil d'optimisation : Activez les drapeaux de compilation `-C target-cpu=native` pour tirer parti des instructions vectorielles AVX-512 sur cible x86_64.
 :type tip

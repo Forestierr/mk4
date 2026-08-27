@@ -77,6 +77,21 @@ export function registerPreviewCommand(
             { enableScripts: true, retainContextWhenHidden: true }
         );
 
+        panel.iconPath = {
+            light: vscode.Uri.joinPath(
+                context.extensionUri,
+                'resources',
+                'icons',
+                'preview-light.svg'
+            ),
+            dark: vscode.Uri.joinPath(
+                context.extensionUri,
+                'resources',
+                'icons',
+                'preview-dark.svg'
+            )
+        };
+
         // --- #16 : Initialisation unique du HTML ---
         panel.webview.html = getSvgHtml();
 

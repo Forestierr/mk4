@@ -4,7 +4,7 @@
   "description": "Markdown but a little bit better !",
   "publisher": "rob1forest",
   "version": "1.3.0",
-  "icon": "public/favicon-128x128.ico",
+  "icon": "public/favicon-512x512.png",
   "engines": {
     "vscode": "^1.125.0"
   },
@@ -25,25 +25,37 @@
         "command": "mk4.showPreview",
         "title": "mk4: Afficher l'aperçu",
         "category": "Markdown",
-        "icon": "$(open-preview)"
+        "icon": {
+          "light": "./resources/icons/preview-light.svg",
+          "dark": "./resources/icons/preview-dark.svg"
+        }
       },
       {
         "command": "mk4.exportPdf",
         "title": "mk4: Exporter en PDF",
         "category": "Markdown",
-        "icon": "$(file-pdf)"
+        "icon": {
+          "light": "./resources/icons/pdf-light.svg",
+          "dark": "./resources/icons/pdf-dark.svg"
+        }
       },
       {
         "command": "mk4.exportTypst",
         "title": "mk4: Exporter le code Typst",
         "category": "Markdown",
-        "icon": "$(file-code)"
+        "icon": {
+          "light": "./resources/icons/typ-light.svg",
+          "dark": "./resources/icons/typ-dark.svg"
+        }
       },
       {
         "command": "mk4.showMarkdownPreview",
         "title": "mk4: Aperçu Markdown Brut",
         "category": "Markdown",
-        "icon": "$(markdown)"
+        "icon": {
+          "light": "./resources/icons/md-light.svg",
+          "dark": "./resources/icons/md-dark.svg"
+        }
       },
       {
         "command": "mk4.selectTheme",
@@ -60,12 +72,12 @@
           "group": "navigation@1"
         },
         {
-          "command": "mk4.exportPdf",
+          "command": "mk4.showMarkdownPreview",
           "when": "resourceLangId == markdown",
           "group": "navigation@2"
         },
         {
-          "command": "mk4.showMarkdownPreview",
+          "command": "mk4.exportPdf",
           "when": "resourceLangId == markdown",
           "group": "navigation@3"
         },

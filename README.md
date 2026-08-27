@@ -1,14 +1,19 @@
-# MK4 - Markdown to Typst
+<center>
+  <h1>MK4</h1>
+  <h3>Markdown but a little bit better !</h3>
+  <br>
+  <img src="public/favicon-512x512.png" alt="Logo MK4" width="250">
+  <br><br>
+</center>
 
 [![Visual Studio Marketplace](https://vsmarketplacebadges.dev/version-short/rob1forest.mk4.svg)](https://marketplace.visualstudio.com/items?itemName=rob1forest.mk4)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](LICENSE)
 
 > **Alliez la simplicité d'écriture du Markdown à l'excellence typographique de [Typst](https://typst.app/).**  
-> Rédigez vos rapports d'ingénierie, documentations techniques et articles scientifiques en Markdown standard tout en générant instantanément des PDF de qualité publication.
+> Rédigez vos rapports d'ingénierie, documentations techniques et articles scientifiques en Markdown standard tout en générant instantanément des PDF de qualité.
 
 <!-- SCREENSHOT_HERO_START -->
-<!-- Remplacez le lien ci-dessous par votre GIF animé ou capture d'écran principale -->
-![Aperçu interactif de MK4 dans VS Code](https://raw.githubusercontent.com/Forestierr/mk4/main/assets/demo.gif)
+![Aperçu interactif de MK4 dans VS Code](https://raw.githubusercontent.com/Forestierr/mk4/main/resources/images/mk4-preview.png)
 *Édition Markdown en direct à gauche, aperçu Typst vectoriel instantané avec synchronisation bidirectionnelle à droite.*
 <!-- SCREENSHOT_HERO_END -->
 
@@ -173,10 +178,9 @@ fn main() {
 ---
 
 <!-- SCREENSHOT_FEATURES_START -->
-<!-- Placeholders pour vos captures d'écran des fonctionnalités -->
 | Autocomplétion intelligente | Export PDF & Thèmes |
 | :---: | :---: |
-| ![Autocomplétion](https://raw.githubusercontent.com/Forestierr/mk4/main/assets/completion.png) | ![Rendu PDF](https://raw.githubusercontent.com/Forestierr/mk4/main/assets/pdf-export.png) |
+| ![Autocomplétion](https://raw.githubusercontent.com/Forestierr/mk4/main/resources/images/auto%20completion.png) | ![Rendu PDF](https://raw.githubusercontent.com/Forestierr/mk4/main/resources/images/pdf%20view.png) |
 <!-- SCREENSHOT_FEATURES_END -->
 
 ## Démarrage rapide
