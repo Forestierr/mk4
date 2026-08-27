@@ -5,6 +5,14 @@ Tous les changements notables sur l'extension "mk4" seront documentés dans ce f
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/), 
 et ce projet adhère au [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.1](https://github.com/Forestierr/mk4/compare/v1.4.0...v1.4.1) (2026-08-27)
+
+
+### Bug Fixes
+
+* update icon path in package.json ([5ebd61f](https://github.com/Forestierr/mk4/commit/5ebd61fb398fe9f66bb5bc913f11d103512b151f))
+* update icon path in package.json ([a5153b8](https://github.com/Forestierr/mk4/commit/a5153b87c22c2ad23597fd5f9319246874ec4591))
+
 ## [1.4.0](https://github.com/Forestierr/mk4/compare/v1.3.1...v1.4.0) (2026-08-27)
 
 
