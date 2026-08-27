@@ -4,6 +4,7 @@ import * as fs from 'fs';
 import { execFile } from 'child_process';
 import { compileMarkdownToTypst } from '../parser';
 import { getTypstRootPath } from './preview';
+import { getTypstBinary } from '../typst-binary';
 
 /**
  * Enregistre les commandes `mk4.exportPdf` et `mk4.exportTypst`.
@@ -40,7 +41,7 @@ export function registerExportCommands(context: vscode.ExtensionContext): vscode
                     const tempExportTypst = path.join(baseDir, '.mk4-export.typ');
                     fs.writeFileSync(tempExportTypst, typstCode, 'utf8');
 
-                    execFile('typst', ['compile', tempExportTypst, pdfPath, '--root', rootPath], (error, _stdout, stderr) => {
+                    execFile(getTypstBinary(context), ['compile', tempExportTypst, pdfPath, '--root', rootPath], (error, _stdout, stderr) => {
                         if (fs.existsSync(tempExportTypst)) {
                             fs.unlinkSync(tempExportTypst);
                         }

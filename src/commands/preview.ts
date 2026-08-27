@@ -6,6 +6,7 @@ import { compileMarkdownToTypst } from '../parser';
 import { normalizeFsPath, LineSourceMap } from '../parser/includes';
 import { validateAnnotations, parseTypstErrors } from '../providers/diagnostics';
 import { getSvgHtml } from '../webviews/preview-html';
+import { getTypstBinary } from '../typst-binary';
 
 /** Helper pour lire le contenu d'un document ouvert dans VS Code ou sur le disque. */
 function getDocumentOrDiskContent(filePath: string): string | undefined {
@@ -75,6 +76,21 @@ export function registerPreviewCommand(
             vscode.ViewColumn.Beside,
             { enableScripts: true, retainContextWhenHidden: true }
         );
+
+        panel.iconPath = {
+            light: vscode.Uri.joinPath(
+                context.extensionUri,
+                'resources',
+                'icons',
+                'preview-light.svg'
+            ),
+            dark: vscode.Uri.joinPath(
+                context.extensionUri,
+                'resources',
+                'icons',
+                'preview-dark.svg'
+            )
+        };
 
         // --- #16 : Initialisation unique du HTML ---
         panel.webview.html = getSvgHtml();
@@ -158,7 +174,7 @@ export function registerPreviewCommand(
                 }
 
                 activeCompileProcess = execFile(
-                    'typst',
+                    getTypstBinary(context),
                     ['compile', tempTypstFile, tempSvgPattern, '--root', rootPath],
                     (error, _stdout, stderr) => {
                         activeCompileProcess = null;
@@ -221,7 +237,7 @@ export function registerPreviewCommand(
                         // Lancer typst eval pour la map de positions (scroll sync)
                         const evalExpr = `query(<mk4_loc>).map(el => (value: el.value, pos: el.location().position()))`;
                         activeEvalProcess = execFile(
-                            'typst',
+                            getTypstBinary(context),
                             ['eval', evalExpr, '--in', tempTypstFile, '--root', rootPath],
                             (qErr, qStdout) => {
                                 activeEvalProcess = null;
@@ -284,6 +300,10 @@ export function registerPreviewCommand(
                     }
                 }
             } else if (message.command === 'revealLine') {
+                // Preview → Éditeur (scroll sync)
+                const scrollSyncEnabled = vscode.workspace.getConfiguration('mk4').get<boolean>('preview.enableScrollSync') ?? true;
+                if (!scrollSyncEnabled) { return; }
+
                 isScrollingFromWebview = true;
                 if (webviewScrollTimeout) { clearTimeout(webviewScrollTimeout); }
                 webviewScrollTimeout = setTimeout(() => { isScrollingFromWebview = false; }, 150);
@@ -294,10 +314,12 @@ export function registerPreviewCommand(
             }
         });
 
-        // Éditeur → Preview
+        // Éditeur → Preview (scroll sync)
         let scrollPending = false;
         const scrollSub = vscode.window.onDidChangeTextEditorVisibleRanges(e => {
             if (e.textEditor === editor) {
+                const scrollSyncEnabled = vscode.workspace.getConfiguration('mk4').get<boolean>('preview.enableScrollSync') ?? true;
+                if (!scrollSyncEnabled) { return; }
                 if (isScrollingFromWebview) { return; }
                 if (scrollPending) { return; }
                 scrollPending = true;
@@ -324,7 +346,8 @@ export function registerPreviewCommand(
 
             if (changedPath === rootPathNorm || activeDependencies.has(changedPath)) {
                 if (updateTimeout) { clearTimeout(updateTimeout); }
-                updateTimeout = setTimeout(() => updateWebview(), 300);
+                const debounce = vscode.workspace.getConfiguration('mk4').get<number>('preview.debounceMs') ?? 300;
+                updateTimeout = setTimeout(() => updateWebview(), debounce);
             }
         });
 
@@ -336,7 +359,8 @@ export function registerPreviewCommand(
 
             if (changedPath === rootPathNorm || activeDependencies.has(changedPath)) {
                 if (updateTimeout) { clearTimeout(updateTimeout); }
-                updateTimeout = setTimeout(() => updateWebview(), 300);
+                const debounce = vscode.workspace.getConfiguration('mk4').get<number>('preview.debounceMs') ?? 300;
+                updateTimeout = setTimeout(() => updateWebview(), debounce);
             }
         };
         const watcherChangeSub = fileWatcher.onDidChange(onFsChange);
@@ -376,8 +400,16 @@ export function registerPreviewCommand(
         // Réagir aux changements de configuration VS Code
         context.subscriptions.push(
             vscode.workspace.onDidChangeConfiguration(event => {
-                if (event.affectsConfiguration('mk4.typst.defaultTheme') ||
-                    event.affectsConfiguration('mk4.typst.customThemePath')) {
+                if (
+                    event.affectsConfiguration('mk4.typst.defaultTheme') ||
+                    event.affectsConfiguration('mk4.typst.customThemePath') ||
+                    event.affectsConfiguration('mk4.typst.lang') ||
+                    event.affectsConfiguration('mk4.typst.pageMargin') ||
+                    event.affectsConfiguration('mk4.typst.pageNumbering') ||
+                    event.affectsConfiguration('mk4.typst.fontFamily') ||
+                    event.affectsConfiguration('mk4.typst.fontSize') ||
+                    event.affectsConfiguration('mk4.typst.syntaxHighlighting')
+                ) {
                     updateWebview();
                 }
             })

@@ -40,6 +40,21 @@ export function registerMarkdownPreviewCommand(context: vscode.ExtensionContext)
             {}
         );
 
+        panel.iconPath = {
+            light: vscode.Uri.joinPath(
+                context.extensionUri,
+                'resources',
+                'icons',
+                'md-light.svg'
+            ),
+            dark: vscode.Uri.joinPath(
+                context.extensionUri,
+                'resources',
+                'icons',
+                'md-dark.svg'
+            )
+        };
+
         const activeDependencies = new Set<string>();
 
         const updateMdWebview = () => {

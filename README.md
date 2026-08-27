@@ -1,14 +1,19 @@
-# MK4 - Markdown to Typst
+<center>
+  <h1>MK4</h1>
+  <h3>Markdown but a little bit better !</h3>
+  <br>
+  <img src="public/favicon-512x512.png" alt="Logo MK4" width="250">
+  <br><br>
+</center>
 
 [![Visual Studio Marketplace](https://vsmarketplacebadges.dev/version-short/rob1forest.mk4.svg)](https://marketplace.visualstudio.com/items?itemName=rob1forest.mk4)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](LICENSE)
 
 > **Alliez la simplicité d'écriture du Markdown à l'excellence typographique de [Typst](https://typst.app/).**  
-> Rédigez vos rapports d'ingénierie, documentations techniques et articles scientifiques en Markdown standard tout en générant instantanément des PDF de qualité publication.
+> Rédigez vos rapports d'ingénierie, documentations techniques et articles scientifiques en Markdown standard tout en générant instantanément des PDF de qualité.
 
 <!-- SCREENSHOT_HERO_START -->
-<!-- Remplacez le lien ci-dessous par votre GIF animé ou capture d'écran principale -->
-![Aperçu interactif de MK4 dans VS Code](https://raw.githubusercontent.com/Forestierr/mk4/main/assets/demo.gif)
+![Aperçu interactif de MK4 dans VS Code](https://raw.githubusercontent.com/Forestierr/mk4/main/resources/images/mk4-preview.png)
 *Édition Markdown en direct à gauche, aperçu Typst vectoriel instantané avec synchronisation bidirectionnelle à droite.*
 <!-- SCREENSHOT_HERO_END -->
 
@@ -173,10 +178,9 @@ fn main() {
 ---
 
 <!-- SCREENSHOT_FEATURES_START -->
-<!-- Placeholders pour vos captures d'écran des fonctionnalités -->
 | Autocomplétion intelligente | Export PDF & Thèmes |
 | :---: | :---: |
-| ![Autocomplétion](https://raw.githubusercontent.com/Forestierr/mk4/main/assets/completion.png) | ![Rendu PDF](https://raw.githubusercontent.com/Forestierr/mk4/main/assets/pdf-export.png) |
+| ![Autocomplétion](https://raw.githubusercontent.com/Forestierr/mk4/main/resources/images/auto%20completion.png) | ![Rendu PDF](https://raw.githubusercontent.com/Forestierr/mk4/main/resources/images/pdf%20view.png) |
 <!-- SCREENSHOT_FEATURES_END -->
 
 ## Démarrage rapide
@@ -333,14 +337,17 @@ Générez automatiquement une section de références à partir d'un fichier Bib
 
 ### Multi-fichiers et inclusions
 
-Découpez vos documents volumineux ou chapitres de rapport :
+Découpez vos documents volumineux ou chapitres de rapport en plusieurs sous-fichiers :
 
 ```markdown
 :include ./chapitres/01-introduction.md
 :include ./chapitres/02-architecture.md
 ```
 
-- Inclusion récursive avec détection des boucles circulaires.
+- **Mise à jour en direct (Watch mode) :** L'aperçu Typst se rafraîchit instantanément lors de la modification de n'importe quel sous-fichier inclus ou fichier de thème (y compris avant sauvegarde).
+- **Navigation interactive au clic :** Cliquez sur n'importe quel paragraphe ou section dans l'aperçu Typst pour ouvrir directement le fichier source correspondant dans VS Code à la ligne exacte.
+- **Remontée d'erreurs intelligente :** Si un sous-fichier contient une erreur Typst (ex: citation introuvable ou syntaxe invalide), la ligne `:include` du document parent est automatiquement soulignée en rouge avec le message explicatif.
+- **Inclusion récursive & Protection :** Résolution des chemins relatifs imbriqués et protection contre les boucles circulaires.
 - Les métadonnées de document (`:title`, `:theme`...) des sous-fichiers sont automatiquement ignorées pour préserver celles du document principal.
 
 ### Saut de page
@@ -355,10 +362,12 @@ Découpez vos documents volumineux ou chapitres de rapport :
 
 MK4 intègre une suite d'outils d'assistance directement dans l'éditeur :
 
+- **Navigation interactive Preview ➔ Source :** Cliquez n'importe où dans la prévisualisation Typst pour positionner le curseur dans l'éditeur sur la ligne du fichier source (ou ouvrir le sous-fichier inclus).
 - **Documentation au survol (Hover) :** Survolez n'importe quelle annotation (`:width`, `:type`, `:bib-style`…) ou référence croisée (`@mon_ancre`) pour afficher une infobulle interactive avec description, valeurs acceptées et cible.
-- **Autocomplétion intelligente (IntelliSense) :** Tapez `:` en début de ligne pour afficher la liste des annotations valides adaptées au contexte (titre, image, code, tableau, citation ou document).
-- **Navigation & Références croisées :** `Ctrl + Clic` (ou `F12`) sur une référence `@ancre` vous amène directement à sa ligne de déclaration `:id ancre`.
+- **Autocomplétion intelligente (IntelliSense) :** Tapez `:` en début de ligne pour afficher la liste des annotations valides adaptées au contexte (titre, image, code, tableau, citation ou en-tête de document).
+- **Navigation & Références croisées :** `Ctrl + Clic` (ou `F12`) sur une référence `@ancre` vous amène directement à sa ligne de déclaration `:id ancre` (y compris à travers plusieurs sous-fichiers).
 - **Sélecteur de thème rapide :** Cliquez sur le nom du thème dans la **barre d'état** (en bas à droite) pour basculer instantanément entre `default`, `modern`, `academic` ou un thème `.typ` personnalisé.
+- **Packaging ultra-léger (`esbuild`) :** Démarrage instantané de l'extension et package VSIX optimisé (< 200 Ko).
 
 ---
 
