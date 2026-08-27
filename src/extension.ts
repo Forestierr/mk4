@@ -12,24 +12,30 @@ import { createDefinitionProvider, createReferenceProvider, createRenameProvider
 import { MK4StatusBar, registerThemePickerCommand } from './providers/statusBar';
 import { createCodeLensProvider } from './providers/codelens';
 import { MK4CodeActionProvider } from './providers/codeAction';
+import { getTypstBinary, isBundledBinaryAvailable } from './typst-binary';
 
 /** Sessions de preview actives (pour le nettoyage final). */
 const activeSessions: { dir: string; id: string }[] = [];
 
 export function activate(context: vscode.ExtensionContext) {
-    // Vérification de la disponibilité du binaire Typst (non-bloquante)
-    execFile('typst', ['--version'], (error) => {
-        if (error && (error as NodeJS.ErrnoException).code === 'ENOENT') {
-            vscode.window.showErrorMessage(
-                "MK4 : la commande `typst` est introuvable. Veuillez l'installer et l'ajouter à votre PATH.",
-                'Installer Typst'
-            ).then(choice => {
-                if (choice === 'Installer Typst') {
-                    vscode.env.openExternal(vscode.Uri.parse('https://typst.app/docs/'));
-                }
-            });
-        }
-    });
+    // Vérification de la disponibilité du binaire Typst (non-bloquante).
+    // En production, le binaire est bundlé dans dist/ — aucune installation requise.
+    // En développement local (sans fetch préalable), on tombe sur le fallback PATH.
+    if (!isBundledBinaryAvailable(context)) {
+        // Binaire bundlé absent (mode dev) : vérifier le PATH système
+        execFile('typst', ['--version'], (error) => {
+            if (error && (error as NodeJS.ErrnoException).code === 'ENOENT') {
+                vscode.window.showWarningMessage(
+                    'MK4 [dev] : binaire Typst bundlé absent. Exécutez `node scripts/fetch-typst-binaries.js` ou installez Typst sur votre PATH.',
+                    'Télécharger Typst'
+                ).then(choice => {
+                    if (choice === 'Télécharger Typst') {
+                        vscode.env.openExternal(vscode.Uri.parse('https://typst.app/docs/'));
+                    }
+                });
+            }
+        });
+    }
 
     // Nettoyage des fichiers temporaires orphelins au démarrage
     vscode.workspace.findFiles('**/.mk4-{temp,export}-*').then(files => {

@@ -11,11 +11,20 @@ permissions:
 
 jobs:
   publish:
-
     runs-on: ubuntu-latest
 
-    steps:
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - win32-x64
+          - win32-arm64
+          - linux-x64
+          - linux-arm64
+          - darwin-x64
+          - darwin-arm64
 
+    steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -25,11 +34,22 @@ jobs:
           node-version: 22
           cache: npm
 
+      # Outils d'extraction nécessaires pour les archives Typst (.zip et .tar.xz)
+      - name: Install extraction tools
+        run: sudo apt-get install -y unzip xz-utils
+
       - run: npm ci
 
-      - run: npm run compile
+      # Build + téléchargement du binaire Typst pour la plateforme cible
+      - name: Build extension & fetch Typst binary
+        run: npm run vscode:prepublish
+        env:
+          VSCE_TARGET: ${{ matrix.target }}
 
-      - run: npx @vscode/vsce package
+      # Packaging en VSIX ciblé
+      - name: Package VSIX
+        run: npx @vscode/vsce package --target ${{ matrix.target }} --out mk4-${{ matrix.target }}.vsix
 
-      - name: Publish Marketplace
-        run: npx @vscode/vsce publish --pat ${{ secrets.VSCE_PAT }}
+      # Publication sur le VS Code Marketplace
+      - name: Publish to Marketplace
+        run: npx @vscode/vsce publish --pat ${{ secrets.VSCE_PAT }} --packagePath mk4-${{ matrix.target }}.vsix

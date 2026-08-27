@@ -6,6 +6,7 @@ import { compileMarkdownToTypst } from '../parser';
 import { normalizeFsPath, LineSourceMap } from '../parser/includes';
 import { validateAnnotations, parseTypstErrors } from '../providers/diagnostics';
 import { getSvgHtml } from '../webviews/preview-html';
+import { getTypstBinary } from '../typst-binary';
 
 /** Helper pour lire le contenu d'un document ouvert dans VS Code ou sur le disque. */
 function getDocumentOrDiskContent(filePath: string): string | undefined {
@@ -158,7 +159,7 @@ export function registerPreviewCommand(
                 }
 
                 activeCompileProcess = execFile(
-                    'typst',
+                    getTypstBinary(context),
                     ['compile', tempTypstFile, tempSvgPattern, '--root', rootPath],
                     (error, _stdout, stderr) => {
                         activeCompileProcess = null;
@@ -221,7 +222,7 @@ export function registerPreviewCommand(
                         // Lancer typst eval pour la map de positions (scroll sync)
                         const evalExpr = `query(<mk4_loc>).map(el => (value: el.value, pos: el.location().position()))`;
                         activeEvalProcess = execFile(
-                            'typst',
+                            getTypstBinary(context),
                             ['eval', evalExpr, '--in', tempTypstFile, '--root', rootPath],
                             (qErr, qStdout) => {
                                 activeEvalProcess = null;
