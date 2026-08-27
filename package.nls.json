@@ -1,0 +1,33 @@
+{
+  "command.showPreview.title": "mk4: Show Preview",
+  "command.exportPdf.title": "mk4: Export to PDF",
+  "command.exportTypst.title": "mk4: Export Typst Source",
+  "command.showMarkdownPreview.title": "mk4: Raw Markdown Preview",
+  "command.selectTheme.title": "mk4: Change Theme",
+
+  "config.preview.title": "MK4 — Preview",
+  "config.preview.debounceMs.description": "Delay (in ms) before the preview updates after a keystroke. Increase this value on slower machines.",
+  "config.preview.enableScrollSync.description": "Synchronizes scrolling between the editor and the preview panel.",
+  "config.editor.enableCodeLens.description": "Displays MK4 action buttons (CodeLens) at the top of Markdown files.",
+
+  "config.theme.title": "MK4 — Theme",
+  "config.typst.defaultTheme.description": "The default Typst theme to use for compilation.",
+  "config.typst.defaultTheme.enum.default": "Clean and readable theme, without a separate cover page.",
+  "config.typst.defaultTheme.enum.modern": "Modern theme with colored accents and a cover page.",
+  "config.typst.defaultTheme.enum.academic": "Formal academic theme, inspired by LaTeX.",
+  "config.typst.customThemePath.description": "Absolute path to a custom .typ file (overrides the default theme).",
+
+  "config.layout.title": "MK4 — Layout",
+  "config.typst.lang.description": "Document language code for the Typst output (`fr`, `en`, `de`…). Leave empty to automatically use the VS Code interface language.",
+  "config.typst.pageMargin.description": "Page margins (e.g. `2.5cm`, `1in`, `20mm`). Applies to both horizontal and vertical margins.",
+  "config.typst.pageNumbering.description": "Page numbering format displayed in the footer.",
+  "config.typst.pageNumbering.enum.xofy": "Page X of Y total (e.g. 2 / 5)",
+  "config.typst.pageNumbering.enum.simple": "Simple page number (e.g. 2)",
+  "config.typst.pageNumbering.enum.roman": "Roman numeral numbering (e.g. ii)",
+  "config.typst.pageNumbering.enum.none": "No page numbering",
+
+  "config.typography.title": "MK4 — Typography",
+  "config.typst.fontFamily.description": "Main document font (e.g. `Linux Libertine`, `New Computer Modern`, `Arial`). Leave empty to use the theme default.",
+  "config.typst.fontSize.description": "Main font size (e.g. `11pt`, `12pt`, `10.5pt`). Leave empty to use the theme default.",
+  "config.typst.syntaxHighlighting.description": "Enables syntax highlighting in Typst code blocks."
+}

@@ -1,0 +1,33 @@
+{
+  "command.showPreview.title": "mk4: Afficher l'aperçu",
+  "command.exportPdf.title": "mk4: Exporter en PDF",
+  "command.exportTypst.title": "mk4: Exporter le code Typst",
+  "command.showMarkdownPreview.title": "mk4: Aperçu Markdown Brut",
+  "command.selectTheme.title": "mk4: Changer de thème",
+
+  "config.preview.title": "MK4 — Aperçu",
+  "config.preview.debounceMs.description": "Délai (en ms) avant la mise à jour de la prévisualisation après une frappe. Augmentez cette valeur sur les machines lentes.",
+  "config.preview.enableScrollSync.description": "Synchronise le défilement entre l'éditeur et la prévisualisation.",
+  "config.editor.enableCodeLens.description": "Affiche les boutons d'action MK4 (CodeLens) en en-tête des fichiers Markdown.",
+
+  "config.theme.title": "MK4 — Thème",
+  "config.typst.defaultTheme.description": "Le thème Typst par défaut à utiliser pour la compilation.",
+  "config.typst.defaultTheme.enum.default": "Thème propre et lisible, sans page de garde séparée.",
+  "config.typst.defaultTheme.enum.modern": "Thème moderne avec accents colorés et page de garde.",
+  "config.typst.defaultTheme.enum.academic": "Thème académique formel, inspiré LaTeX.",
+  "config.typst.customThemePath.description": "Chemin absolu vers un fichier .typ personnalisé (écrase le thème par défaut).",
+
+  "config.layout.title": "MK4 — Mise en page",
+  "config.typst.lang.description": "Code de langue du document Typst (`fr`, `en`, `de`…). Laissez vide pour utiliser la langue de l'interface VS Code automatiquement.",
+  "config.typst.pageMargin.description": "Marge des pages (ex : `2.5cm`, `1in`, `20mm`). S'applique aux marges horizontales et verticales.",
+  "config.typst.pageNumbering.description": "Format de numérotation des pages dans le pied de page.",
+  "config.typst.pageNumbering.enum.xofy": "Page X sur Y total (ex : 2 / 5)",
+  "config.typst.pageNumbering.enum.simple": "Numéro de page simple (ex : 2)",
+  "config.typst.pageNumbering.enum.roman": "Numérotation en chiffres romains (ex : ii)",
+  "config.typst.pageNumbering.enum.none": "Pas de numérotation",
+
+  "config.typography.title": "MK4 — Typographie",
+  "config.typst.fontFamily.description": "Police principale du document (ex : `Linux Libertine`, `New Computer Modern`, `Arial`). Laissez vide pour utiliser celle du thème.",
+  "config.typst.fontSize.description": "Taille de la police principale (ex : `11pt`, `12pt`, `10.5pt`). Laissez vide pour utiliser celle du thème.",
+  "config.typst.syntaxHighlighting.description": "Active la coloration syntaxique dans les blocs de code Typst."
+}
