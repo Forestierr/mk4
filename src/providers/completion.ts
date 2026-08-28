@@ -156,6 +156,10 @@ export function computeAnnotationCompletions(
 
     // --- ACTIONS GLOBALES (disponibles partout) ---
     addItem('layout pagebreak', 'layout pagebreak', 'Saut de page', vscode.CompletionItemKind.Keyword, 'layout');
+    addItem('layout landscape', 'layout landscape', 'Page au format paysage', vscode.CompletionItemKind.Keyword, 'layout');
+    addItem('layout portrait', 'layout portrait', 'Page au format portrait', vscode.CompletionItemKind.Keyword, 'layout');
+    addItem('layout columns 2', 'layout columns 2', 'Texte sur 2 colonnes', vscode.CompletionItemKind.Keyword, 'layout');
+    addItem('layout columns 3', 'layout columns 3', 'Texte sur 3 colonnes', vscode.CompletionItemKind.Keyword, 'layout');
     addItem('include', 'include ', 'Inclure un sous-fichier Markdown', vscode.CompletionItemKind.File);
 
     return completions;

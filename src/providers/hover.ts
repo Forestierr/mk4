@@ -25,7 +25,7 @@ const ANNOTATION_DOCS: Record<string, { description: string; values?: string; ta
     // Universel
     id:        { description: 'Définit une ancre pour les références croisées (`@mon_id`).',         values: 'Identifiant sans espaces (ex: `sec_intro`)',   targets: 'Universel' },
     align:     { description: 'Alignement horizontal du bloc.',                                      values: '`left` `center` `right`',                    targets: 'Universel' },
-    layout:    { description: 'Contrôle la mise en page. `pagebreak` insère un saut de page.',       values: '`pagebreak`',                                 targets: 'Universel' },
+    layout:    { description: 'Contrôle la mise en page. `pagebreak` (saut de page), `landscape`/`portrait` (orientation de page), ou `columns 2` (texte en colonnes). Si appliqué au document, affecte tout le fichier.',       values: '`pagebreak` `landscape` `portrait` `columns 2`',                                 targets: 'Universel' },
     // Titre
     short:     { description: 'Titre abrégé utilisé dans la table des matières.',                    values: 'Texte libre',                                 targets: 'Titre (`#`)' },
     // Image
