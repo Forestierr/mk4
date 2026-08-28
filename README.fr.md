@@ -352,11 +352,20 @@ Découpez vos documents volumineux ou chapitres de rapport en plusieurs sous-fic
 - **Inclusion récursive & Protection :** Résolution des chemins relatifs imbriqués et protection contre les boucles circulaires.
 - Les métadonnées de document (`:title`, `:theme`...) des sous-fichiers sont automatiquement ignorées pour préserver celles du document principal.
 
-### Saut de page
+### Mise en page (Layout)
+
+Contrôlez l'orientation des pages, les colonnes et les sauts de page via l'annotation `:layout`.
+Si placée tout en haut du fichier, elle s'applique à tout le document. Si placée sous un bloc spécifique (paragraphe, image, etc.), elle s'applique uniquement à ce bloc.
 
 ```markdown
+:layout landscape
+:layout columns 2
 :layout pagebreak
 ```
+
+- `:layout landscape` / `:layout portrait` : Modifie l'orientation de la page. Utile pour isoler un grand tableau sur une page paysage.
+- `:layout columns <n>` : Formate le texte sur plusieurs colonnes (ex: `columns 2`).
+- `:layout pagebreak` : Insère un saut de page manuel.
 
 ---
 

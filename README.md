@@ -335,11 +335,20 @@ Split large documents or report chapters into multiple sub-files:
 - **Recursive inclusion & protection:** Nested relative path resolution and circular loop detection.
 - Document metadata (`:title`, `:theme`...) from sub-files are automatically ignored to preserve those of the main document.
 
-### Page break
+### Layout and Formatting
+
+Control page orientation, columns, and page breaks using the `:layout` annotation. 
+If placed at the top of the file, it applies to the entire document. If placed under a specific block (paragraph, image, etc.), it applies only to that block.
 
 ```markdown
+:layout landscape
+:layout columns 2
 :layout pagebreak
 ```
+
+- `:layout landscape` / `:layout portrait`: Changes the page orientation. Useful to isolate a large table on a landscape page.
+- `:layout columns <n>`: Formats the text into multiple columns (e.g., `columns 2`).
+- `:layout pagebreak`: Inserts a manual page break.
 
 ---
 
