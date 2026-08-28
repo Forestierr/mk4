@@ -10,10 +10,12 @@ export function getSvgHtml(): string {
             body {
                 background-color: var(--vscode-editor-background);
                 margin: 0; padding: 40px 20px;
+            }
+            #pages-container {
                 display: flex;
                 flex-direction: column;
                 align-items: center;
-                gap: 30px;
+                gap: 40px;
             }
             .page {
                 background: white;

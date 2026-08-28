@@ -49,6 +49,8 @@ jobs:
       # Packaging en VSIX ciblé
       - name: Package VSIX
         run: npx @vscode/vsce package --target ${{ matrix.target }} --out mk4-${{ matrix.target }}.vsix
+        env:
+          VSCE_TARGET: ${{ matrix.target }}
 
       # Publication sur le VS Code Marketplace
       - name: Publish to Marketplace

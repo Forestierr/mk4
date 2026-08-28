@@ -17,7 +17,7 @@ Les annotations s'insèrent sur la ligne suivant immédiatement le bloc cible (o
 | `:short` | `<texte>` | Titre | Titre abrégé pour la table des matières |
 | `:id` | `<identifiant>` | Universel | Ancre pour référence croisée (`@id`) |
 | `:align` | `left`, `center`, `right` | Universel | Alignement horizontal du bloc |
-| `:layout` | `pagebreak` | Universel | Insère un saut de page immédiatement après l'élément |
+| `:layout` | `pagebreak`, `landscape`, `portrait`, `columns <n>` | Universel | Contrôle de mise en page (saut de page, orientation, colonnes) |
 | `:width` | `50%`, `4cm`, `300pt` | Image | Largeur de l'image |
 | `:caption` | `<texte>` | Image / Code / Tableau | Ajoute une légende numérotée (figure Typst) |
 | `:filename` | `fichier.rs` | Code | Affiche un bandeau d'en-tête avec le nom du fichier |

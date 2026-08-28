@@ -107,7 +107,9 @@ export function stringifyToTypst(node: MK4NodeWithData, baseDir: string, footnot
         }
 
         case 'text': {
-            result = node.value;
+            // On échappe le '@' s'il est précédé d'une lettre, chiffre, point ou tiret (ex: adresses email)
+            // afin d'éviter que Typst ne le considère comme une référence croisée.
+            result = node.value.replace(/([a-zA-Z0-9_À-ÿ\.\-])@/g, '$1\\@');
             break;
         }
 
@@ -420,9 +422,36 @@ export function stringifyToTypst(node: MK4NodeWithData, baseDir: string, footnot
             break;
     }
 
-    // Si n'importe quel élément possède l'annotation :layout pagebreak, on coupe la page juste après lui !
-    if (ann.layout === 'pagebreak') {
-        result += `\n\n#pagebreak()`;
+    // Gestion des layouts spéciaux
+    if (typeof ann.layout === 'string') {
+        const layout = ann.layout.trim().toLowerCase();
+
+        if (layout === 'pagebreak') {
+            result += `\n\n#pagebreak()`;
+        } else if (layout === 'landscape') {
+            if (node.type === 'root') {
+                result = `#set page(flipped: true)\n` + result;
+            } else {
+                // Pour un bloc spécifique, on l'isole sur une page paysage
+                result = `#page(flipped: true)[\n  ${result}\n]`;
+            }
+        } else if (layout === 'portrait') {
+            if (node.type === 'root') {
+                result = `#set page(flipped: false)\n` + result;
+            } else {
+                result = `#page(flipped: false)[\n  ${result}\n]`;
+            }
+        } else if (layout.startsWith('columns')) {
+            const match = layout.match(/columns\s*[-:]?\s*(\d+)/);
+            if (match) {
+                const cols = parseInt(match[1], 10);
+                if (node.type === 'root') {
+                    result = `#show: columns.with(${cols})\n` + result;
+                } else {
+                    result = `#columns(${cols})[\n  ${result}\n]`;
+                }
+            }
+        }
     }
 
     return result;
