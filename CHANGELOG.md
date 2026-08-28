@@ -5,6 +5,14 @@ Tous les changements notables sur l'extension "mk4" seront documentés dans ce f
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/), 
 et ce projet adhère au [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0](https://github.com/Forestierr/mk4/compare/v1.4.1...v1.5.0) (2026-08-28)
+
+
+### Features
+
+* add layout landscape and columns ([ac9c94b](https://github.com/Forestierr/mk4/commit/ac9c94b7d9659f3b1b6d46b2a5f36b4e074c89e2))
+* **i18n:** add English translation and NLS support ([ab1479c](https://github.com/Forestierr/mk4/commit/ab1479cda07637c8811254770aecc413c52ede7b))
+
 ## [1.4.1](https://github.com/Forestierr/mk4/compare/v1.4.0...v1.4.1) (2026-08-27)
 
 
